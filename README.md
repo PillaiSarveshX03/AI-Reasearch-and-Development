@@ -1,1 +1,1 @@
-# AI---PCE-Hackathon
+# AI-Hackathon
