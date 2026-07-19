@@ -1,0 +1,34 @@
+AI_Research_Chatbot/
+│
+├── app/
+│   ├── __init__.py - 
+│   ├── main.py
+│   ├── routes.py 
+│   ├── schemas.py -
+│   ├── ai.py   -        # OpenAI Integration
+│   ├── rag.py
+│   ├── prompts.py -
+│   ├── security.py -
+│   ├── config.py -
+│   └── utils.py 
+│
+├── database/
+│
+├── data/
+│
+├── uploads/
+│
+├── streamlit_app.py
+│
+├── requirements.txt
+│
+└── .env
+
+
+for word in question.split():
+
+            if word in STOP_WORDS:
+                continue
+
+            if word in text:
+                score += 1
