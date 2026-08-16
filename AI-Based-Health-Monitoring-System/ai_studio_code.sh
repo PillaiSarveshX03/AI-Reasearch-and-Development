@@ -1,0 +1,1 @@
+npm install tailwindcss postcss autoprefixer react-router-dom axios react-icons chart.js react-chartjs-2

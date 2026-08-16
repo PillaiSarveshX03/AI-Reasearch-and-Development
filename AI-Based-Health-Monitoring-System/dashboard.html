@@ -1,0 +1,2472 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>AI Patient Health Monitor</title>
+
+    <!-- Bootstrap -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    >
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+    <style>
+
+        body {
+            background: #f4f7fb;
+            font-family: Arial, sans-serif;
+        }
+
+        .navbar {
+            background: #0d6efd;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+        }
+
+        /* =========================
+           OVERVIEW CARDS
+        ========================= */
+
+        .overview-card {
+            border: none;
+            border-radius: 14px;
+            padding: 22px;
+            color: white;
+            min-height: 130px;
+        }
+
+        .overview-number {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .overview-title {
+            font-size: 15px;
+            opacity: 0.9;
+        }
+
+        .total-card {
+            background: #0d6efd;
+        }
+
+        .critical-card {
+            background: #dc3545;
+        }
+
+        .high-card {
+            background: #fd7e14;
+        }
+
+        .medium-card {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .low-card {
+            background: #198754;
+        }
+
+        /* =========================
+           GENERAL CARDS
+        ========================= */
+
+        .info-card {
+            background: white;
+            border: none;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .vital-card {
+            background: white;
+            border: none;
+            border-radius: 12px;
+            padding: 20px;
+            height: 100%;
+        }
+
+        .vital-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .vital-value {
+            font-size: 25px;
+            font-weight: bold;
+        }
+
+        /* =========================
+           PATIENT TABLE
+        ========================= */
+
+        .patient-table-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .patient-table {
+            margin-bottom: 0;
+        }
+
+        .patient-table thead {
+            background: #f1f4f8;
+        }
+
+        .patient-table tbody tr {
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .patient-table tbody tr:hover {
+            background: #eef5ff;
+        }
+
+        .patient-table td,
+        .patient-table th {
+            vertical-align: middle;
+            padding: 13px 12px;
+        }
+
+        .search-box {
+            border-radius: 8px;
+        }
+
+        /* =========================
+           PREDICTION
+        ========================= */
+
+        .prediction-card {
+            border-radius: 12px;
+            padding: 25px;
+            color: white;
+        }
+
+        .low {
+            background: #198754;
+        }
+
+        .medium {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .high {
+            background: #fd7e14;
+        }
+
+        .critical {
+            background: #dc3545;
+        }
+
+        /* =========================
+           RECOMMENDATIONS
+        ========================= */
+
+        .recommendation {
+            background: white;
+            padding: 15px;
+            border-left: 5px solid #0d6efd;
+            margin-bottom: 10px;
+            border-radius: 6px;
+        }
+
+        #patientSection {
+            display: none;
+        }
+
+        #loading {
+            display: none;
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .chart-container {
+            height: 300px;
+        }
+
+        .pagination .page-link {
+            cursor: pointer;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<!-- =====================================================
+     NAVBAR
+===================================================== -->
+
+<nav class="navbar navbar-dark mb-4">
+
+    <div class="container">
+
+        <span class="navbar-brand">
+
+            <i class="fa-solid fa-heart-pulse"></i>
+
+            AI Patient Health Monitor
+
+        </span>
+
+        <span class="text-white">
+
+            Doctor Dashboard
+
+        </span>
+
+    </div>
+
+</nav>
+
+
+
+<div class="container pb-5">
+
+
+<!-- =====================================================
+     HEADER
+===================================================== -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+
+        <h2 class="fw-bold">
+
+            Hospital Overview
+
+        </h2>
+
+        <p class="text-muted mb-0">
+
+            AI-powered patient health monitoring system.
+
+        </p>
+
+    </div>
+
+
+    <div id="loading">
+
+        <div class="spinner-border text-primary"></div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =====================================================
+     OVERVIEW CARDS
+===================================================== -->
+
+<div class="row g-3 mb-4">
+
+
+    <div class="col-md">
+
+        <div class="overview-card total-card shadow-sm">
+
+            <div class="overview-title">
+
+                <i class="fa-solid fa-users"></i>
+
+                Total Patients
+
+            </div>
+
+            <div
+                id="totalPatients"
+                class="overview-number"
+            >
+                --
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="col-md">
+
+        <div class="overview-card critical-card shadow-sm">
+
+            <div class="overview-title">
+
+                <i class="fa-solid fa-triangle-exclamation"></i>
+
+                Critical
+
+            </div>
+
+            <div
+                id="criticalCount"
+                class="overview-number"
+            >
+                --
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="col-md">
+
+        <div class="overview-card high-card shadow-sm">
+
+            <div class="overview-title">
+
+                <i class="fa-solid fa-arrow-up"></i>
+
+                High Risk
+
+            </div>
+
+            <div
+                id="highCount"
+                class="overview-number"
+            >
+                --
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="col-md">
+
+        <div class="overview-card medium-card shadow-sm">
+
+            <div class="overview-title">
+
+                <i class="fa-solid fa-circle-exclamation"></i>
+
+                Medium Risk
+
+            </div>
+
+            <div
+                id="mediumCount"
+                class="overview-number"
+            >
+                --
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="col-md">
+
+        <div class="overview-card low-card shadow-sm">
+
+            <div class="overview-title">
+
+                <i class="fa-solid fa-circle-check"></i>
+
+                Low Risk
+
+            </div>
+
+            <div
+                id="lowCount"
+                class="overview-number"
+            >
+                --
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =====================================================
+     CHART + SYSTEM INFORMATION
+===================================================== -->
+
+<div class="row g-4 mb-4">
+
+
+    <div class="col-md-7">
+
+        <div class="info-card shadow-sm">
+
+            <h5 class="fw-bold mb-3">
+
+                <i class="fa-solid fa-chart-pie"></i>
+
+                Risk Distribution
+
+            </h5>
+
+            <div class="chart-container">
+
+                <canvas id="riskChart"></canvas>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="col-md-5">
+
+        <div class="info-card shadow-sm h-100">
+
+            <h5 class="fw-bold mb-3">
+
+                <i class="fa-solid fa-robot"></i>
+
+                AI Monitoring System
+
+            </h5>
+
+
+            <p class="text-muted">
+
+                This dashboard uses a Random Forest
+                machine learning model trained on
+                patient health parameters.
+
+            </p>
+
+
+            <hr>
+
+
+            <div class="mb-3">
+
+                <strong>
+
+                    Machine Learning Model
+
+                </strong>
+
+                <div class="text-success">
+
+                    Random Forest
+
+                </div>
+
+            </div>
+
+
+            <div class="mb-3">
+
+                <strong>
+
+                    Dataset Size
+
+                </strong>
+
+                <div>
+
+                    2,000 Patients
+
+                </div>
+
+            </div>
+
+
+            <div class="mb-3">
+
+                <strong>
+
+                    Model Accuracy
+
+                </strong>
+
+                <div class="text-success">
+
+                    94.50%
+
+                </div>
+
+            </div>
+
+
+            <div>
+
+                <strong>
+
+                    Prediction Classes
+
+                </strong>
+
+                <div>
+
+                    Low · Medium · High · Critical
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =====================================================
+     PATIENT DATABASE
+===================================================== -->
+
+<div class="card border-0 shadow-sm mb-4">
+
+    <div class="card-body">
+
+
+        <!-- HEADER -->
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+
+            <div>
+
+                <h5 class="fw-bold mb-1">
+
+                    <i class="fa-solid fa-database"></i>
+
+                    Patient Database
+
+                </h5>
+
+                <small class="text-muted">
+
+                    Browse all patients in the hospital database.
+
+                </small>
+
+            </div>
+
+
+            <span
+                id="patientCount"
+                class="badge bg-primary"
+            >
+
+                0 Patients
+
+            </span>
+
+        </div>
+
+
+
+        <!-- SEARCH + FILTER -->
+
+        <div class="row g-2 mb-3">
+
+
+            <!-- SEARCH -->
+
+            <div class="col-md-5">
+
+                <div class="input-group">
+
+                    <span class="input-group-text">
+
+                        <i class="fa-solid fa-magnifying-glass"></i>
+
+                    </span>
+
+                    <input
+                        type="text"
+                        id="searchInput"
+                        class="form-control search-box"
+                        placeholder="Search by patient name or ID..."
+                        oninput="applyFilters()"
+                    >
+
+                </div>
+
+            </div>
+
+
+
+            <!-- WARD -->
+
+            <div class="col-md-3">
+
+                <select
+                    id="wardFilter"
+                    class="form-select"
+                    onchange="applyFilters()"
+                >
+
+                    <option value="all">
+
+                        All Wards
+
+                    </option>
+
+                </select>
+
+            </div>
+
+
+
+            <!-- RISK -->
+
+            <div class="col-md-3">
+
+                <select
+                    id="riskFilter"
+                    class="form-select"
+                    onchange="applyFilters()"
+                >
+
+                    <option value="all">
+
+                        All Risk Levels
+
+                    </option>
+
+                    <option value="Critical">
+
+                        Critical
+
+                    </option>
+
+                    <option value="High">
+
+                        High
+
+                    </option>
+
+                    <option value="Medium">
+
+                        Medium
+
+                    </option>
+
+                    <option value="Low">
+
+                        Low
+
+                    </option>
+
+                </select>
+
+            </div>
+
+
+
+            <!-- RESET -->
+
+            <div class="col-md-1">
+
+                <button
+                    class="btn btn-outline-secondary w-100"
+                    onclick="resetFilters()"
+                    title="Reset filters"
+                >
+
+                    <i class="fa-solid fa-rotate-left"></i>
+
+                </button>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- RESULT INFO -->
+
+        <div class="d-flex justify-content-between mb-2">
+
+            <small
+                id="resultInfo"
+                class="text-muted"
+            >
+
+                Showing patients
+
+            </small>
+
+        </div>
+
+
+
+        <!-- TABLE -->
+
+        <div class="table-responsive patient-table-container">
+
+            <table class="table patient-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Patient ID
+                        </th>
+
+                        <th>
+                            Name
+                        </th>
+
+                        <th>
+                            Age
+                        </th>
+
+                        <th>
+                            Gender
+                        </th>
+
+                        <th>
+                            Ward
+                        </th>
+
+                        <th>
+                            Admission Date
+                        </th>
+
+                        <th>
+                            Risk
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="patientTableBody">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+
+        <!-- NO RESULTS -->
+
+        <div
+            id="noResults"
+            class="alert alert-warning text-center mt-3"
+            style="display:none;"
+        >
+
+            <i class="fa-solid fa-magnifying-glass"></i>
+
+            No patients match your search or filters.
+
+        </div>
+
+
+
+        <!-- PAGINATION -->
+
+        <div class="d-flex justify-content-center mt-3">
+
+            <nav>
+
+                <ul
+                    id="pagination"
+                    class="pagination mb-0"
+                >
+
+                </ul>
+
+            </nav>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+
+
+<!-- =====================================================
+     PATIENT DETAILS
+===================================================== -->
+
+<div id="patientSection">
+
+
+    <!-- PATIENT INFORMATION -->
+
+    <div class="info-card shadow-sm mb-4">
+
+        <div class="row align-items-center">
+
+            <div class="col-md-8">
+
+                <h3
+                    id="patientName"
+                    class="fw-bold"
+                >
+                    --
+                </h3>
+
+                <p
+                    id="patientInfo"
+                    class="text-muted"
+                >
+                    --
+                </p>
+
+            </div>
+
+
+            <div class="col-md-4 text-md-end">
+
+                <span
+                    id="patientCode"
+                    class="badge bg-secondary"
+                >
+                    --
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <hr>
+
+
+        <div class="row">
+
+            <div class="col-md-4">
+
+                <strong>Ward</strong>
+
+                <div id="ward">
+                    --
+                </div>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <strong>Gender</strong>
+
+                <div id="gender">
+                    --
+                </div>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <strong>Admission Date</strong>
+
+                <div id="admissionDate">
+                    --
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- HEALTH PARAMETERS -->
+
+    <h5 class="section-title">
+
+        Current Health Parameters
+
+    </h5>
+
+
+    <div class="row g-3 mb-4">
+
+
+        <div class="col-md-3">
+
+            <div class="vital-card shadow-sm">
+
+                <div class="vital-icon text-danger">
+
+                    <i class="fa-solid fa-heart-pulse"></i>
+
+                </div>
+
+                <div class="text-muted">
+                    Heart Rate
+                </div>
+
+                <div
+                    id="heartRate"
+                    class="vital-value"
+                >
+                    --
+                </div>
+
+                <small>BPM</small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-md-3">
+
+            <div class="vital-card shadow-sm">
+
+                <div class="vital-icon text-primary">
+
+                    <i class="fa-solid fa-droplet"></i>
+
+                </div>
+
+                <div class="text-muted">
+                    Blood Pressure
+                </div>
+
+                <div
+                    id="bloodPressure"
+                    class="vital-value"
+                >
+                    --
+                </div>
+
+                <small>mmHg</small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-md-3">
+
+            <div class="vital-card shadow-sm">
+
+                <div class="vital-icon text-info">
+
+                    <i class="fa-solid fa-lungs"></i>
+
+                </div>
+
+                <div class="text-muted">
+                    SpO₂
+                </div>
+
+                <div
+                    id="oxygen"
+                    class="vital-value"
+                >
+                    --
+                </div>
+
+                <small>%</small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-md-3">
+
+            <div class="vital-card shadow-sm">
+
+                <div class="vital-icon text-warning">
+
+                    <i class="fa-solid fa-temperature-half"></i>
+
+                </div>
+
+                <div class="text-muted">
+                    Temperature
+                </div>
+
+                <div
+                    id="temperature"
+                    class="vital-value"
+                >
+                    --
+                </div>
+
+                <small>°C</small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-md-3">
+
+            <div class="vital-card shadow-sm">
+
+                <div class="vital-icon text-success">
+
+                    <i class="fa-solid fa-vials"></i>
+
+                </div>
+
+                <div class="text-muted">
+                    WBC Count
+                </div>
+
+                <div
+                    id="wbc"
+                    class="vital-value"
+                >
+                    --
+                </div>
+
+                <small>cells/µL</small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-md-3">
+
+            <div class="vital-card shadow-sm">
+
+                <div class="vital-icon text-secondary">
+
+                    <i class="fa-solid fa-flask"></i>
+
+                </div>
+
+                <div class="text-muted">
+                    Urine pH
+                </div>
+
+                <div
+                    id="urinePh"
+                    class="vital-value"
+                >
+                    --
+                </div>
+
+                <small>pH</small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-md-3">
+
+            <div class="vital-card shadow-sm">
+
+                <div class="vital-icon text-primary">
+
+                    <i class="fa-solid fa-wind"></i>
+
+                </div>
+
+                <div class="text-muted">
+                    Respiratory Rate
+                </div>
+
+                <div
+                    id="respiratoryRate"
+                    class="vital-value"
+                >
+                    --
+                </div>
+
+                <small>breaths/min</small>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-md-3">
+
+            <div class="vital-card shadow-sm">
+
+                <div class="vital-icon text-danger">
+
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+
+                </div>
+
+                <div class="text-muted">
+                    Recorded Risk
+                </div>
+
+                <div
+                    id="datasetRisk"
+                    class="vital-value"
+                >
+                    --
+                </div>
+
+                <small>Dataset label</small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- AI ANALYSIS -->
+
+    <div class="row g-4 mb-4">
+
+
+        <div class="col-md-6">
+
+            <div
+                id="predictionCard"
+                class="prediction-card shadow-sm"
+            >
+
+                <h5>
+
+                    <i class="fa-solid fa-robot"></i>
+
+                    AI Health Prediction
+
+                </h5>
+
+
+                <h1
+                    id="prediction"
+                    class="fw-bold"
+                >
+                    --
+                </h1>
+
+
+                <p class="mb-0">
+
+                    Model Confidence:
+
+                    <strong id="confidence">
+                        --
+                    </strong>%
+
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-md-6">
+
+            <div class="info-card shadow-sm h-100">
+
+                <h5 class="fw-bold">
+
+                    <i class="fa-solid fa-brain"></i>
+
+                    AI Analysis
+
+                </h5>
+
+
+                <p class="text-muted">
+
+                    The prediction is generated using
+                    the Random Forest machine learning
+                    model trained on the patient dataset.
+
+                </p>
+
+
+                <div class="alert alert-info mb-0">
+
+                    <i class="fa-solid fa-circle-info"></i>
+
+                    This system is intended for
+                    demonstration and decision-support
+                    purposes.
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- RECOMMENDATIONS -->
+
+    <div class="info-card shadow-sm mb-4">
+
+        <h5 class="fw-bold mb-3">
+
+            <i class="fa-solid fa-notes-medical"></i>
+
+            AI Recommendations
+
+        </h5>
+
+
+        <div id="recommendations">
+
+            <div class="recommendation">
+
+                Select a patient to view recommendations.
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+</div>
+
+
+
+<!-- =====================================================
+     JAVASCRIPT
+===================================================== -->
+
+<script>
+
+
+/* ========================================================
+   GLOBAL VARIABLES
+======================================================== */
+
+let allPatients = [];
+
+let filteredPatients = [];
+
+let currentPage = 1;
+
+const patientsPerPage = 10;
+
+let riskChart = null;
+
+
+
+/* ========================================================
+   LOAD OVERVIEW
+======================================================== */
+
+async function loadOverview() {
+
+    try {
+
+        const response =
+            await fetch("/api/overview");
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Unable to load overview"
+            );
+
+        }
+
+        const data =
+            await response.json();
+
+
+        document.getElementById(
+            "totalPatients"
+        ).textContent =
+            data.total_patients;
+
+
+        document.getElementById(
+            "criticalCount"
+        ).textContent =
+            data.critical;
+
+
+        document.getElementById(
+            "highCount"
+        ).textContent =
+            data.high;
+
+
+        document.getElementById(
+            "mediumCount"
+        ).textContent =
+            data.medium;
+
+
+        document.getElementById(
+            "lowCount"
+        ).textContent =
+            data.low;
+
+
+        createRiskChart(data);
+
+    }
+
+    catch(error) {
+
+        console.error(error);
+
+    }
+
+}
+
+
+
+/* ========================================================
+   CREATE RISK CHART
+======================================================== */
+
+function createRiskChart(data) {
+
+    const ctx =
+        document.getElementById(
+            "riskChart"
+        );
+
+
+    if (riskChart !== null) {
+
+        riskChart.destroy();
+
+    }
+
+
+    riskChart = new Chart(
+
+        ctx,
+
+        {
+
+            type: "doughnut",
+
+            data: {
+
+                labels: [
+
+                    "Critical",
+
+                    "High",
+
+                    "Medium",
+
+                    "Low"
+
+                ],
+
+                datasets: [
+
+                    {
+
+                        data: [
+
+                            data.critical,
+
+                            data.high,
+
+                            data.medium,
+
+                            data.low
+
+                        ]
+
+                    }
+
+                ]
+
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                plugins: {
+
+                    legend: {
+
+                        position: "bottom"
+
+                    }
+
+                }
+
+            }
+
+        }
+
+    );
+
+}
+
+
+
+/* ========================================================
+   LOAD ALL PATIENTS
+======================================================== */
+
+async function loadPatients() {
+
+    try {
+
+        const response =
+            await fetch("/api/patients");
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Unable to load patients"
+            );
+
+        }
+
+
+        allPatients =
+            await response.json();
+
+
+        filteredPatients =
+            [...allPatients];
+
+
+        document.getElementById(
+            "patientCount"
+        ).textContent =
+            `${allPatients.length} Patients`;
+
+
+        populateWardFilter();
+
+
+        renderPatients();
+
+
+    }
+
+    catch(error) {
+
+        console.error(error);
+
+        alert(
+            "Unable to connect to the Flask backend."
+        );
+
+    }
+
+}
+
+
+
+/* ========================================================
+   POPULATE WARD FILTER
+======================================================== */
+
+function populateWardFilter() {
+
+    const wardFilter =
+        document.getElementById(
+            "wardFilter"
+        );
+
+
+    const wards =
+        [
+            ...new Set(
+
+                allPatients
+                    .map(
+                        patient => patient.ward
+                    )
+                    .filter(Boolean)
+
+            )
+        ]
+        .sort();
+
+
+    wards.forEach(ward => {
+
+        const option =
+            document.createElement(
+                "option"
+            );
+
+
+        option.value = ward;
+
+        option.textContent = ward;
+
+
+        wardFilter.appendChild(option);
+
+    });
+
+}
+
+
+
+/* ========================================================
+   APPLY SEARCH + FILTERS
+======================================================== */
+
+function applyFilters() {
+
+    const search =
+        document.getElementById(
+            "searchInput"
+        )
+        .value
+        .toLowerCase()
+        .trim();
+
+
+    const selectedWard =
+        document.getElementById(
+            "wardFilter"
+        ).value;
+
+
+    const selectedRisk =
+        document.getElementById(
+            "riskFilter"
+        ).value;
+
+
+    filteredPatients =
+        allPatients.filter(patient => {
+
+
+            const matchesSearch =
+
+                !search ||
+
+                String(
+                    patient.patient_code || ""
+                )
+                .toLowerCase()
+                .includes(search) ||
+
+                String(
+                    patient.name || ""
+                )
+                .toLowerCase()
+                .includes(search);
+
+
+
+            const matchesWard =
+
+                selectedWard === "all" ||
+
+                patient.ward === selectedWard;
+
+
+
+            /*
+             The /api/patients endpoint may not contain
+             risk_level depending on your database model.
+
+             Therefore, risk filtering is handled when
+             the backend provides it.
+            */
+
+            const matchesRisk =
+
+                selectedRisk === "all" ||
+
+                patient.risk_level === selectedRisk;
+
+
+
+            return (
+
+                matchesSearch &&
+
+                matchesWard &&
+
+                matchesRisk
+
+            );
+
+        });
+
+
+    currentPage = 1;
+
+
+    renderPatients();
+
+}
+
+
+
+/* ========================================================
+   RENDER PATIENT TABLE
+======================================================== */
+
+function renderPatients() {
+
+    const tableBody =
+        document.getElementById(
+            "patientTableBody"
+        );
+
+
+    const noResults =
+        document.getElementById(
+            "noResults"
+        );
+
+
+    tableBody.innerHTML = "";
+
+
+    const totalResults =
+        filteredPatients.length;
+
+
+    if (totalResults === 0) {
+
+        noResults.style.display =
+            "block";
+
+
+        document.getElementById(
+            "resultInfo"
+        ).textContent =
+            "Showing 0 patients";
+
+
+        renderPagination();
+
+
+        return;
+
+    }
+
+
+    noResults.style.display =
+        "none";
+
+
+    const startIndex =
+        (currentPage - 1) *
+        patientsPerPage;
+
+
+    const endIndex =
+        Math.min(
+
+            startIndex +
+            patientsPerPage,
+
+            totalResults
+
+        );
+
+
+    const currentPatients =
+        filteredPatients.slice(
+            startIndex,
+            endIndex
+        );
+
+
+    currentPatients.forEach(patient => {
+
+
+        const row =
+            document.createElement(
+                "tr"
+            );
+
+
+        row.onclick =
+            function() {
+
+                loadPatient(
+                    patient.id
+                );
+
+            };
+
+
+        const risk =
+            patient.risk_level ||
+            "View";
+
+
+        let riskClass =
+            "bg-secondary";
+
+
+        if (risk === "Critical") {
+
+            riskClass =
+                "bg-danger";
+
+        }
+
+        else if (risk === "High") {
+
+            riskClass =
+                "bg-warning text-dark";
+
+        }
+
+        else if (risk === "Medium") {
+
+            riskClass =
+                "bg-warning text-dark";
+
+        }
+
+        else if (risk === "Low") {
+
+            riskClass =
+                "bg-success";
+
+        }
+
+
+        row.innerHTML = `
+
+            <td>
+
+                <strong>
+
+                    ${patient.patient_code || "--"}
+
+                </strong>
+
+            </td>
+
+
+            <td>
+
+                ${patient.name || "--"}
+
+            </td>
+
+
+            <td>
+
+                ${patient.age ?? "--"}
+
+            </td>
+
+
+            <td>
+
+                ${patient.gender || "--"}
+
+            </td>
+
+
+            <td>
+
+                ${patient.ward || "--"}
+
+            </td>
+
+
+            <td>
+
+                ${patient.admission_date || "--"}
+
+            </td>
+
+
+            <td>
+
+                <span class="badge ${riskClass}">
+
+                    ${risk}
+
+                </span>
+
+            </td>
+
+        `;
+
+
+        tableBody.appendChild(row);
+
+    });
+
+
+    document.getElementById(
+        "resultInfo"
+    ).textContent =
+
+        `Showing ${startIndex + 1}-${endIndex} of ${totalResults} patients`;
+
+
+    renderPagination();
+
+}
+
+
+
+/* ========================================================
+   PAGINATION
+======================================================== */
+
+function renderPagination() {
+
+    const pagination =
+        document.getElementById(
+            "pagination"
+        );
+
+
+    pagination.innerHTML = "";
+
+
+    const totalPages =
+        Math.ceil(
+
+            filteredPatients.length /
+            patientsPerPage
+
+        );
+
+
+    if (totalPages <= 1) {
+
+        return;
+
+    }
+
+
+    /*
+    Previous button
+    */
+
+    const previous =
+        document.createElement(
+            "li"
+        );
+
+
+    previous.className =
+        `page-item ${
+            currentPage === 1
+                ? "disabled"
+                : ""
+        }`;
+
+
+    previous.innerHTML = `
+
+        <a class="page-link">
+
+            Previous
+
+        </a>
+
+    `;
+
+
+    previous.onclick =
+        function() {
+
+            if (currentPage > 1) {
+
+                currentPage--;
+
+                renderPatients();
+
+            }
+
+        };
+
+
+    pagination.appendChild(
+        previous
+    );
+
+
+
+    /*
+    Page numbers
+    */
+
+    let startPage =
+        Math.max(
+            1,
+            currentPage - 2
+        );
+
+
+    let endPage =
+        Math.min(
+            totalPages,
+            currentPage + 2
+        );
+
+
+    if (currentPage <= 3) {
+
+        endPage =
+            Math.min(
+                5,
+                totalPages
+            );
+
+    }
+
+
+    if (
+        currentPage >=
+        totalPages - 2
+    ) {
+
+        startPage =
+            Math.max(
+                1,
+                totalPages - 4
+            );
+
+    }
+
+
+    for (
+        let page = startPage;
+        page <= endPage;
+        page++
+    ) {
+
+        const item =
+            document.createElement(
+                "li"
+            );
+
+
+        item.className =
+            `page-item ${
+                page === currentPage
+                    ? "active"
+                    : ""
+            }`;
+
+
+        item.innerHTML = `
+
+            <a class="page-link">
+
+                ${page}
+
+            </a>
+
+        `;
+
+
+        item.onclick =
+            function() {
+
+                currentPage =
+                    page;
+
+                renderPatients();
+
+            };
+
+
+        pagination.appendChild(
+            item
+        );
+
+    }
+
+
+
+    /*
+    Next button
+    */
+
+    const next =
+        document.createElement(
+            "li"
+        );
+
+
+    next.className =
+        `page-item ${
+            currentPage === totalPages
+                ? "disabled"
+                : ""
+        }`;
+
+
+    next.innerHTML = `
+
+        <a class="page-link">
+
+            Next
+
+        </a>
+
+    `;
+
+
+    next.onclick =
+        function() {
+
+            if (
+                currentPage <
+                totalPages
+            ) {
+
+                currentPage++;
+
+                renderPatients();
+
+            }
+
+        };
+
+
+    pagination.appendChild(
+        next
+    );
+
+}
+
+
+
+/* ========================================================
+   RESET FILTERS
+======================================================== */
+
+function resetFilters() {
+
+    document.getElementById(
+        "searchInput"
+    ).value = "";
+
+
+    document.getElementById(
+        "wardFilter"
+    ).value = "all";
+
+
+    document.getElementById(
+        "riskFilter"
+    ).value = "all";
+
+
+    filteredPatients =
+        [...allPatients];
+
+
+    currentPage = 1;
+
+
+    renderPatients();
+
+}
+
+
+
+/* ========================================================
+   LOAD SELECTED PATIENT
+======================================================== */
+
+async function loadPatient(id) {
+
+    const loading =
+        document.getElementById(
+            "loading"
+        );
+
+
+    loading.style.display =
+        "block";
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/patient/${id}/stats`
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                data.message ||
+                "Unable to load patient."
+            );
+
+            return;
+
+        }
+
+
+        const patient =
+            data.patient;
+
+
+        /*
+        PATIENT INFORMATION
+        */
+
+        document.getElementById(
+            "patientName"
+        ).textContent =
+            patient.name;
+
+
+        document.getElementById(
+            "patientInfo"
+        ).textContent =
+
+            `Age: ${patient.age} | Gender: ${patient.gender}`;
+
+
+        document.getElementById(
+            "patientCode"
+        ).textContent =
+            patient.patient_code;
+
+
+        document.getElementById(
+            "ward"
+        ).textContent =
+            patient.ward;
+
+
+        document.getElementById(
+            "gender"
+        ).textContent =
+            patient.gender;
+
+
+        document.getElementById(
+            "admissionDate"
+        ).textContent =
+            patient.admission_date;
+
+
+
+        /*
+        VITALS
+        */
+
+        const vitals =
+            data.vitals;
+
+
+        document.getElementById(
+            "heartRate"
+        ).textContent =
+            vitals.heart_rate;
+
+
+        document.getElementById(
+            "bloodPressure"
+        ).textContent =
+
+            `${vitals.blood_pressure_sys}/${vitals.blood_pressure_dia}`;
+
+
+        document.getElementById(
+            "oxygen"
+        ).textContent =
+            vitals.oxygen_level;
+
+
+        document.getElementById(
+            "temperature"
+        ).textContent =
+            vitals.body_temperature;
+
+
+        document.getElementById(
+            "wbc"
+        ).textContent =
+            vitals.white_blood_cell_count;
+
+
+        document.getElementById(
+            "urinePh"
+        ).textContent =
+            vitals.urine_ph;
+
+
+        document.getElementById(
+            "respiratoryRate"
+        ).textContent =
+            vitals.respiratory_rate;
+
+
+        document.getElementById(
+            "datasetRisk"
+        ).textContent =
+            data.dataset_risk_level;
+
+
+
+        /*
+        AI PREDICTION
+        */
+
+        const prediction =
+            data.ai_prediction.status;
+
+
+        const confidence =
+            data.ai_prediction.confidence;
+
+
+        document.getElementById(
+            "prediction"
+        ).textContent =
+            prediction;
+
+
+        document.getElementById(
+            "confidence"
+        ).textContent =
+            confidence;
+
+
+
+        /*
+        PREDICTION COLOR
+        */
+
+        const predictionCard =
+            document.getElementById(
+                "predictionCard"
+            );
+
+
+        predictionCard.className =
+            "prediction-card shadow-sm";
+
+
+        const risk =
+            prediction.toLowerCase();
+
+
+        if (risk === "low") {
+
+            predictionCard.classList.add(
+                "low"
+            );
+
+        }
+
+        else if (risk === "medium") {
+
+            predictionCard.classList.add(
+                "medium"
+            );
+
+        }
+
+        else if (risk === "high") {
+
+            predictionCard.classList.add(
+                "high"
+            );
+
+        }
+
+        else if (risk === "critical") {
+
+            predictionCard.classList.add(
+                "critical"
+            );
+
+        }
+
+
+
+        /*
+        RECOMMENDATIONS
+        */
+
+        displayRecommendations(
+            data.recommendations
+        );
+
+
+
+        /*
+        SHOW DETAILS
+        */
+
+        document.getElementById(
+            "patientSection"
+        ).style.display =
+            "block";
+
+
+        document.getElementById(
+            "patientSection"
+        ).scrollIntoView({
+
+            behavior: "smooth"
+
+        });
+
+    }
+
+    catch(error) {
+
+        console.error(error);
+
+        alert(
+            "Unable to load patient information."
+        );
+
+    }
+
+    finally {
+
+        loading.style.display =
+            "none";
+
+    }
+
+}
+
+
+
+/* ========================================================
+   DISPLAY RECOMMENDATIONS
+======================================================== */
+
+function displayRecommendations(
+    recommendations
+) {
+
+    const box =
+        document.getElementById(
+            "recommendations"
+        );
+
+
+    box.innerHTML = "";
+
+
+    if (
+        !recommendations ||
+        recommendations.length === 0
+    ) {
+
+        box.innerHTML = `
+
+            <div class="recommendation">
+
+                No specific recommendations available.
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    recommendations.forEach(
+        recommendation => {
+
+            box.innerHTML += `
+
+                <div class="recommendation">
+
+                    <i
+                        class="fa-solid fa-circle-check text-primary"
+                    ></i>
+
+                    ${recommendation}
+
+                </div>
+
+            `;
+
+        }
+    );
+
+}
+
+
+
+/* ========================================================
+   START DASHBOARD
+======================================================== */
+
+loadOverview();
+
+loadPatients();
+
+
+</script>
+
+
+</body>
+
+</html>
