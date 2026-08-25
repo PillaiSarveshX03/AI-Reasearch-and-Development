@@ -1,7 +1,8 @@
 /**
  * JARVIS Clean Voice & LLM Integration Controller
- * Handles speech-to-text, LLM API communication (Gemini/OpenAI/Custom),
- * text-to-speech with decibel synchronization, and UI state management.
+ * Handles speech-to-text, LLM API communication (Gemini/OpenAI),
+ * ElevenLabs ultra-realistic neural TTS with decibel synchronization,
+ * and UI state management.
  */
 
 class JarvisApp {
@@ -33,7 +34,7 @@ class JarvisApp {
             ]
         };
 
-        // LLM Configuration (Stored in localStorage)
+        // LLM & Voice Configuration (Stored in localStorage)
         const savedProvider = localStorage.getItem('jarvis_llm_provider') || 'gemini';
         const defaultModel = savedProvider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini';
 
@@ -42,7 +43,14 @@ class JarvisApp {
             apiKey: localStorage.getItem('jarvis_api_key') || '',
             model: localStorage.getItem('jarvis_model') || defaultModel,
             systemPrompt: localStorage.getItem('jarvis_system_prompt') || 
-                'You are J.A.R.V.I.S., a sophisticated, concise, and helpful AI assistant inspired by Tony Stark\'s AI. Speak in a refined, polite, intelligent tone. Keep answers direct and concise for voice conversations.'
+                'You are J.A.R.V.I.S., a sophisticated, concise, and helpful AI assistant inspired by Tony Stark\'s AI. Speak in a refined, polite, intelligent tone. Keep answers direct and concise for voice conversations.',
+            
+            // Voice Engine Settings
+            voiceEngine: localStorage.getItem('jarvis_voice_engine') || 'elevenlabs',
+            elevenLabsApiKey: localStorage.getItem('jarvis_elevenlabs_api_key') || '',
+            elevenLabsVoiceId: localStorage.getItem('jarvis_elevenlabs_voice_id') || 'JBFqnCBsd6RMkjVDRZzb', // George (British)
+            elevenLabsModel: localStorage.getItem('jarvis_elevenlabs_model') || 'eleven_flash_v2_5',
+            openAIVoice: localStorage.getItem('jarvis_openai_voice') || 'onyx'
         };
 
         // DOM Elements
@@ -55,12 +63,18 @@ class JarvisApp {
         this.closeSettingsBtn = document.getElementById('close-settings-btn');
         this.saveSettingsBtn = document.getElementById('save-settings-btn');
 
+        // Tabs
+        this.tabBtnLlm = document.getElementById('tab-btn-llm');
+        this.tabBtnVoice = document.getElementById('tab-btn-voice');
+        this.tabPanelLlm = document.getElementById('tab-panel-llm');
+        this.tabPanelVoice = document.getElementById('tab-panel-voice');
+
         // Text Drawer elements
         this.textDrawer = document.getElementById('text-drawer');
         this.textInput = document.getElementById('text-input');
         this.sendTextBtn = document.getElementById('send-text-btn');
 
-        // Settings Form Elements
+        // LLM Settings Form Elements
         this.providerSelect = document.getElementById('provider-select');
         this.apiKeyInput = document.getElementById('api-key-input');
         this.toggleKeyVisibilityBtn = document.getElementById('toggle-key-visibility');
@@ -72,6 +86,21 @@ class JarvisApp {
         this.testBtnText = document.getElementById('test-btn-text');
         this.testSpinner = document.getElementById('test-spinner');
         this.connectionStatusBadge = document.getElementById('connection-status-badge');
+
+        // Voice Settings Form Elements
+        this.voiceEngineSelect = document.getElementById('voice-engine-select');
+        this.elevenlabsSettingsGroup = document.getElementById('elevenlabs-settings-group');
+        this.openaiTtsSettingsGroup = document.getElementById('openai-tts-settings-group');
+        this.elevenlabsKeyInput = document.getElementById('elevenlabs-key-input');
+        this.toggleElevenlabsKeyVisibilityBtn = document.getElementById('toggle-elevenlabs-key-visibility');
+        this.elevenlabsVoiceSelect = document.getElementById('elevenlabs-voice-select');
+        this.elevenlabsCustomVoiceInput = document.getElementById('elevenlabs-custom-voice-input');
+        this.elevenlabsModelSelect = document.getElementById('elevenlabs-model-select');
+        this.openaiVoiceSelect = document.getElementById('openai-voice-select');
+        this.testVoiceBtn = document.getElementById('test-voice-btn');
+        this.testVoiceBtnText = document.getElementById('test-voice-btn-text');
+        this.voiceSpinner = document.getElementById('voice-spinner');
+        this.voiceStatusBadge = document.getElementById('voice-status-badge');
 
         this.initSpeechRecognition();
         this.initEventListeners();
@@ -88,7 +117,7 @@ class JarvisApp {
 
             this.recognition.onstart = () => {
                 this.isListening = true;
-                this.micBtn.classList.add('active');
+                if (this.micBtn) this.micBtn.classList.add('active');
                 this.setStatus("Listening...", "active");
                 this.audioAnalyzer.startMicrophone();
             };
@@ -177,11 +206,18 @@ class JarvisApp {
             });
         }
 
-        // Settings Modal
+        // Settings Modal Tabs
+        if (this.tabBtnLlm && this.tabBtnVoice) {
+            this.tabBtnLlm.addEventListener('click', () => this.switchTab('llm'));
+            this.tabBtnVoice.addEventListener('click', () => this.switchTab('voice'));
+        }
+
+        // Settings Modal Open/Close
         if (this.settingsBtn) {
             this.settingsBtn.addEventListener('click', () => {
                 this.loadSettingsToForm();
                 this.resetTestStatus();
+                this.resetVoiceTestStatus();
                 this.settingsModal.classList.add('active');
             });
         }
@@ -223,10 +259,32 @@ class JarvisApp {
         // API Key Visibility Toggle
         if (this.toggleKeyVisibilityBtn) {
             this.toggleKeyVisibilityBtn.addEventListener('click', () => {
-                if (this.apiKeyInput.type === 'password') {
-                    this.apiKeyInput.type = 'text';
+                this.apiKeyInput.type = this.apiKeyInput.type === 'password' ? 'text' : 'password';
+            });
+        }
+
+        if (this.toggleElevenlabsKeyVisibilityBtn) {
+            this.toggleElevenlabsKeyVisibilityBtn.addEventListener('click', () => {
+                this.elevenlabsKeyInput.type = this.elevenlabsKeyInput.type === 'password' ? 'text' : 'password';
+            });
+        }
+
+        // Voice Engine Change Listener
+        if (this.voiceEngineSelect) {
+            this.voiceEngineSelect.addEventListener('change', () => {
+                this.onVoiceEngineChanged();
+            });
+        }
+
+        // ElevenLabs Voice Select Listener
+        if (this.elevenlabsVoiceSelect) {
+            this.elevenlabsVoiceSelect.addEventListener('change', () => {
+                if (this.elevenlabsVoiceSelect.value === 'custom') {
+                    this.elevenlabsCustomVoiceInput.style.display = 'block';
+                    this.elevenlabsCustomVoiceInput.focus();
                 } else {
-                    this.apiKeyInput.type = 'password';
+                    this.elevenlabsCustomVoiceInput.style.display = 'none';
+                    this.elevenlabsCustomVoiceInput.value = this.elevenlabsVoiceSelect.value;
                 }
             });
         }
@@ -236,6 +294,27 @@ class JarvisApp {
             this.testConnectionBtn.addEventListener('click', () => {
                 this.testCurrentSettings();
             });
+        }
+
+        // Test Voice Output Button
+        if (this.testVoiceBtn) {
+            this.testVoiceBtn.addEventListener('click', () => {
+                this.testCurrentVoiceSettings();
+            });
+        }
+    }
+
+    switchTab(tab) {
+        if (tab === 'llm') {
+            this.tabBtnLlm.classList.add('active');
+            this.tabBtnVoice.classList.remove('active');
+            this.tabPanelLlm.classList.add('active');
+            this.tabPanelVoice.classList.remove('active');
+        } else {
+            this.tabBtnVoice.classList.add('active');
+            this.tabBtnLlm.classList.remove('active');
+            this.tabPanelVoice.classList.add('active');
+            this.tabPanelLlm.classList.remove('active');
         }
     }
 
@@ -289,7 +368,7 @@ class JarvisApp {
                 reply = `I apologize, sir, but I encountered an API error: ${rawMsg}. Please check your API key and model in settings.`;
             }
         } else {
-            // Built-in intelligent simulated JARVIS responses if no API key is provided yet
+            // Built-in simulated responses if no LLM key provided
             reply = this.getSimulatedResponse(userPrompt);
         }
 
@@ -298,27 +377,18 @@ class JarvisApp {
         this.speak(reply);
     }
 
-    /**
-     * Sanitizes an API key (removes accidental quotes, spaces, newlines)
-     */
     cleanApiKey(key) {
         if (!key) return '';
         return key.trim().replace(/^["'`]|["'`]$/g, '');
     }
 
-    /**
-     * Sanitizes model name
-     */
     cleanModelName(model) {
         if (!model) return '';
         return model.trim().replace(/^models\//, '');
     }
 
-    /**
-     * Formats conversation history for specific API
-     */
     getFormattedHistory(provider) {
-        const historySlice = this.conversationHistory.slice(-6, -1); // exclude current user prompt
+        const historySlice = this.conversationHistory.slice(-6, -1);
         if (provider === 'gemini') {
             return historySlice.map(msg => ({
                 role: msg.role === 'assistant' ? 'model' : 'user',
@@ -332,9 +402,6 @@ class JarvisApp {
         }
     }
 
-    /**
-     * Call LLM API (Google Gemini or OpenAI standard format)
-     */
     async callLLM(prompt, overrideConfig = null) {
         const cfg = overrideConfig || this.config;
         const apiKey = this.cleanApiKey(cfg.apiKey);
@@ -346,14 +413,10 @@ class JarvisApp {
 
         if (cfg.provider === 'gemini') {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-            
             const history = overrideConfig ? [] : this.getFormattedHistory('gemini');
             const contents = [
                 ...history,
-                {
-                    role: 'user',
-                    parts: [{ text: prompt }]
-                }
+                { role: 'user', parts: [{ text: prompt }] }
             ];
 
             const body = {
@@ -367,16 +430,11 @@ class JarvisApp {
                 }
             };
 
-            let res;
-            try {
-                res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-            } catch (networkErr) {
-                throw new Error(`Network connection failed: ${networkErr.message}. Ensure you are connected to the internet.`);
-            }
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
 
             if (!res.ok) {
                 let detailedMessage = `HTTP ${res.status}`;
@@ -401,14 +459,9 @@ class JarvisApp {
             }
 
             const text = candidate.content?.parts?.map(p => p.text).join('') || '';
-            if (!text && candidate.finishReason && candidate.finishReason !== 'STOP') {
-                throw new Error(`Response terminated: ${candidate.finishReason}`);
-            }
-
             return text.trim() || "I have received an empty response, sir.";
 
         } else {
-            // OpenAI compatible endpoint
             const url = `https://api.openai.com/v1/chat/completions`;
             const history = overrideConfig ? [] : this.getFormattedHistory('openai');
             
@@ -425,19 +478,14 @@ class JarvisApp {
                 temperature: 0.7
             };
 
-            let res;
-            try {
-                res = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify(body)
-                });
-            } catch (networkErr) {
-                throw new Error(`Network connection failed: ${networkErr.message}.`);
-            }
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(body)
+            });
 
             if (!res.ok) {
                 let detailedMessage = `HTTP ${res.status}`;
@@ -460,8 +508,189 @@ class JarvisApp {
     }
 
     /**
-     * Test connection with current inputs in settings form
+     * Synthesize realistic neural speech using ElevenLabs API
      */
+    async synthesizeElevenLabs(text, apiKey, voiceId, modelId = 'eleven_flash_v2_5') {
+        const cleanKey = this.cleanApiKey(apiKey);
+        const cleanVoice = (voiceId || 'JBFqnCBsd6RMkjVDRZzb').trim();
+        const url = `https://api.elevenlabs.io/v1/text-to-speech/${cleanVoice}`;
+
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'xi-api-key': cleanKey,
+                'Accept': 'audio/mpeg'
+            },
+            body: JSON.stringify({
+                text: text,
+                model_id: modelId || 'eleven_flash_v2_5',
+                voice_settings: {
+                    stability: 0.5,
+                    similarity_boost: 0.75,
+                    style: 0.0,
+                    use_speaker_boost: true
+                }
+            })
+        });
+
+        if (!res.ok) {
+            let errMessage = `HTTP ${res.status}`;
+            try {
+                const errJson = await res.json();
+                if (errJson.detail && errJson.detail.message) {
+                    errMessage = errJson.detail.message;
+                }
+            } catch (e) {}
+            throw new Error(errMessage);
+        }
+
+        return await res.blob();
+    }
+
+    /**
+     * Synthesize speech using OpenAI TTS API
+     */
+    async synthesizeOpenAITTS(text, apiKey, voice = 'onyx') {
+        const cleanKey = this.cleanApiKey(apiKey);
+        const url = `https://api.openai.com/v1/audio/speech`;
+
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${cleanKey}`
+            },
+            body: JSON.stringify({
+                model: 'tts-1',
+                input: text,
+                voice: voice || 'onyx'
+            })
+        });
+
+        if (!res.ok) {
+            let errMessage = `HTTP ${res.status}`;
+            try {
+                const errJson = await res.json();
+                if (errJson.error && errJson.error.message) {
+                    errMessage = errJson.error.message;
+                }
+            } catch (e) {}
+            throw new Error(errMessage);
+        }
+
+        return await res.blob();
+    }
+
+    /**
+     * Speaks the reply and synchronizes audio decibels to the 3D Orb
+     */
+    async speak(text) {
+        if (this.isSpeaking) {
+            this.stopSpeaking();
+        }
+
+        // 1. ElevenLabs Voice Engine (Ultra-Realistic AI Voice)
+        if (this.config.voiceEngine === 'elevenlabs' && this.config.elevenLabsApiKey) {
+            try {
+                this.setStatus(text, 'speaking');
+                const blob = await this.synthesizeElevenLabs(
+                    text,
+                    this.config.elevenLabsApiKey,
+                    this.config.elevenLabsVoiceId,
+                    this.config.elevenLabsModel
+                );
+
+                await this.audioAnalyzer.playAudioBlob(
+                    blob,
+                    () => {
+                        this.isSpeaking = true;
+                        this.setStatus(text, 'speaking');
+                    },
+                    () => {
+                        this.isSpeaking = false;
+                        this.setStatus("Say something...", "idle");
+                    }
+                );
+                return;
+            } catch (err) {
+                console.warn("ElevenLabs TTS failed, falling back to browser voice:", err);
+            }
+        } 
+        // 2. OpenAI TTS Voice Engine
+        else if (this.config.voiceEngine === 'openai' && this.config.apiKey) {
+            try {
+                this.setStatus(text, 'speaking');
+                const blob = await this.synthesizeOpenAITTS(
+                    text,
+                    this.config.apiKey,
+                    this.config.openAIVoice
+                );
+
+                await this.audioAnalyzer.playAudioBlob(
+                    blob,
+                    () => {
+                        this.isSpeaking = true;
+                        this.setStatus(text, 'speaking');
+                    },
+                    () => {
+                        this.isSpeaking = false;
+                        this.setStatus("Say something...", "idle");
+                    }
+                );
+                return;
+            } catch (err) {
+                console.warn("OpenAI TTS failed, falling back to browser voice:", err);
+            }
+        }
+
+        // 3. Fallback to Browser Native Speech Synthesis
+        this.speakWithBrowser(text);
+    }
+
+    speakWithBrowser(text) {
+        if (!('speechSynthesis' in window)) {
+            this.setStatus(text, 'speaking');
+            return;
+        }
+
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.05;
+        utterance.pitch = 0.95;
+
+        // Select a crisp English/British voice if available
+        const voices = window.speechSynthesis.getVoices();
+        const britishVoice = voices.find(v => v.lang.includes('en-GB') || v.name.includes('UK') || v.name.includes('George') || v.name.includes('Oliver') || v.name.includes('David') || v.name.includes('Natural'));
+        if (britishVoice) utterance.voice = britishVoice;
+
+        utterance.onstart = () => {
+            this.isSpeaking = true;
+            this.audioAnalyzer.setSpeaking(true);
+            this.setStatus(text, 'speaking');
+        };
+
+        utterance.onend = () => {
+            this.stopSpeaking();
+        };
+
+        utterance.onerror = () => {
+            this.stopSpeaking();
+        };
+
+        window.speechSynthesis.speak(utterance);
+    }
+
+    stopSpeaking() {
+        this.isSpeaking = false;
+        this.audioAnalyzer.stopAudioPlayback();
+        this.audioAnalyzer.setSpeaking(false);
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+        this.setStatus("Say something...", "idle");
+    }
+
     async testCurrentSettings() {
         const provider = this.providerSelect.value;
         const apiKey = this.cleanApiKey(this.apiKeyInput.value);
@@ -503,6 +732,48 @@ class JarvisApp {
         }
     }
 
+    async testCurrentVoiceSettings() {
+        const engine = this.voiceEngineSelect.value;
+        const elevenKey = this.cleanApiKey(this.elevenlabsKeyInput.value);
+        let voiceId = this.elevenlabsVoiceSelect.value;
+        if (voiceId === 'custom') {
+            voiceId = this.elevenlabsCustomVoiceInput.value.trim();
+        }
+        const model = this.elevenlabsModelSelect.value;
+
+        if (engine === 'elevenlabs') {
+            if (!elevenKey) {
+                this.setVoiceTestStatus('error', 'Enter ElevenLabs Key first');
+                return;
+            }
+            if (!voiceId) {
+                this.setVoiceTestStatus('error', 'Select/Enter Voice ID');
+                return;
+            }
+
+            this.setVoiceTestStatus('testing', 'Synthesizing voice...');
+            const startTime = performance.now();
+
+            try {
+                const sampleText = "Good evening, sir. ElevenLabs neural audio core is synchronized and active.";
+                const blob = await this.synthesizeElevenLabs(sampleText, elevenKey, voiceId, model);
+                const latency = Math.round(performance.now() - startTime);
+
+                this.setVoiceTestStatus('success', `✓ Playing (${latency}ms)`);
+                await this.audioAnalyzer.playAudioBlob(blob, null, () => {
+                    this.setVoiceTestStatus('success', `✓ Tested (${latency}ms)`);
+                });
+            } catch (err) {
+                console.error("Voice Test Failed:", err);
+                const msg = err.message.length > 60 ? err.message.substring(0, 57) + '...' : err.message;
+                this.setVoiceTestStatus('error', `✕ ${msg}`);
+            }
+        } else {
+            this.setVoiceTestStatus('success', '✓ Native Browser TTS Active');
+            this.speakWithBrowser("Good evening, sir. Browser voice synthesis is active.");
+        }
+    }
+
     setTestStatus(state, message) {
         this.connectionStatusBadge.className = `connection-status-badge ${state}`;
         this.connectionStatusBadge.textContent = message;
@@ -519,8 +790,28 @@ class JarvisApp {
         }
     }
 
+    setVoiceTestStatus(state, message) {
+        this.voiceStatusBadge.className = `connection-status-badge ${state}`;
+        this.voiceStatusBadge.textContent = message;
+        this.voiceStatusBadge.title = message;
+
+        if (state === 'testing') {
+            this.voiceSpinner.style.display = 'inline-block';
+            this.testVoiceBtnText.textContent = 'Synthesizing...';
+            this.testVoiceBtn.disabled = true;
+        } else {
+            this.voiceSpinner.style.display = 'none';
+            this.testVoiceBtnText.textContent = 'Test Voice Output';
+            this.testVoiceBtn.disabled = false;
+        }
+    }
+
     resetTestStatus() {
         this.setTestStatus('idle', 'Not tested');
+    }
+
+    resetVoiceTestStatus() {
+        this.setVoiceTestStatus('idle', 'Not tested');
     }
 
     onProviderChanged() {
@@ -538,6 +829,21 @@ class JarvisApp {
         }
 
         this.resetTestStatus();
+    }
+
+    onVoiceEngineChanged() {
+        const engine = this.voiceEngineSelect.value;
+        if (engine === 'elevenlabs') {
+            this.elevenlabsSettingsGroup.style.display = 'block';
+            this.openaiTtsSettingsGroup.style.display = 'none';
+        } else if (engine === 'openai') {
+            this.elevenlabsSettingsGroup.style.display = 'none';
+            this.openaiTtsSettingsGroup.style.display = 'block';
+        } else {
+            this.elevenlabsSettingsGroup.style.display = 'none';
+            this.openaiTtsSettingsGroup.style.display = 'none';
+        }
+        this.resetVoiceTestStatus();
     }
 
     populateModelDropdown(provider, selectedModel = null) {
@@ -578,53 +884,8 @@ class JarvisApp {
         } else if (p.includes('time')) {
             return `The current local time is ${new Date().toLocaleTimeString()}.`;
         } else {
-            return `I have processed your request regarding "${prompt}". Add your Gemini or OpenAI API Key in the top-right settings to enable live conversational intelligence.`;
+            return `I have processed your request regarding "${prompt}". Configure your Gemini or ElevenLabs credentials in the top-right settings to enable full intelligence.`;
         }
-    }
-
-    /**
-     * Speaks the reply and synchronizes audio decibels to the 3D Orb
-     */
-    speak(text) {
-        if (!('speechSynthesis' in window)) {
-            this.setStatus(text, 'speaking');
-            return;
-        }
-
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.05;
-        utterance.pitch = 0.95;
-
-        // Select a crisp English voice
-        const voices = window.speechSynthesis.getVoices();
-        const britishVoice = voices.find(v => v.lang.includes('en-GB') || v.name.includes('UK') || v.name.includes('George') || v.name.includes('Oliver') || v.name.includes('David') || v.name.includes('Natural'));
-        if (britishVoice) utterance.voice = britishVoice;
-
-        utterance.onstart = () => {
-            this.isSpeaking = true;
-            this.audioAnalyzer.setSpeaking(true);
-            this.setStatus(text, 'speaking');
-        };
-
-        utterance.onend = () => {
-            this.stopSpeaking();
-        };
-
-        utterance.onerror = () => {
-            this.stopSpeaking();
-        };
-
-        window.speechSynthesis.speak(utterance);
-    }
-
-    stopSpeaking() {
-        this.isSpeaking = false;
-        this.audioAnalyzer.setSpeaking(false);
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-        }
-        this.setStatus("Say something...", "idle");
     }
 
     loadSettingsToForm() {
@@ -633,6 +894,28 @@ class JarvisApp {
         this.populateModelDropdown(this.config.provider, this.config.model);
         this.systemPromptInput.value = this.config.systemPrompt;
         this.onProviderChanged();
+
+        // Voice Engine Form Loading
+        this.voiceEngineSelect.value = this.config.voiceEngine;
+        this.elevenlabsKeyInput.value = this.config.elevenLabsApiKey;
+        this.elevenlabsModelSelect.value = this.config.elevenLabsModel;
+        this.openaiVoiceSelect.value = this.config.openAIVoice;
+
+        const matchedVoice = ['JBFqnCBsd6RMkjVDRZzb', 'nPczCjzI2devNBz1zQrb', 'onwK4e9ZLuTAKqWW03F9', 'pNInz6obpgDQGcFmaJgB'].includes(this.config.elevenLabsVoiceId);
+        if (matchedVoice) {
+            this.elevenlabsVoiceSelect.value = this.config.elevenLabsVoiceId;
+            this.elevenlabsCustomVoiceInput.style.display = 'none';
+            this.elevenlabsCustomVoiceInput.value = this.config.elevenLabsVoiceId;
+        } else if (this.config.elevenLabsVoiceId) {
+            this.elevenlabsVoiceSelect.value = 'custom';
+            this.elevenlabsCustomVoiceInput.style.display = 'block';
+            this.elevenlabsCustomVoiceInput.value = this.config.elevenLabsVoiceId;
+        } else {
+            this.elevenlabsVoiceSelect.value = 'JBFqnCBsd6RMkjVDRZzb';
+            this.elevenlabsCustomVoiceInput.style.display = 'none';
+        }
+
+        this.onVoiceEngineChanged();
     }
 
     saveSettings() {
@@ -650,17 +933,38 @@ class JarvisApp {
         const systemPrompt = this.systemPromptInput.value.trim() || 
             'You are J.A.R.V.I.S., a sophisticated, concise, and helpful AI assistant inspired by Tony Stark\'s AI. Speak in a refined, polite, intelligent tone. Keep answers direct and concise for voice conversations.';
 
+        // Voice settings
+        const voiceEngine = this.voiceEngineSelect.value;
+        const elevenLabsApiKey = this.cleanApiKey(this.elevenlabsKeyInput.value);
+        let elevenLabsVoiceId = this.elevenlabsVoiceSelect.value;
+        if (elevenLabsVoiceId === 'custom') {
+            elevenLabsVoiceId = this.elevenlabsCustomVoiceInput.value.trim();
+        }
+        const elevenLabsModel = this.elevenlabsModelSelect.value;
+        const openAIVoice = this.openaiVoiceSelect.value;
+
         this.config = {
             provider,
             apiKey,
             model,
-            systemPrompt
+            systemPrompt,
+            voiceEngine,
+            elevenLabsApiKey,
+            elevenLabsVoiceId,
+            elevenLabsModel,
+            openAIVoice
         };
 
         localStorage.setItem('jarvis_llm_provider', this.config.provider);
         localStorage.setItem('jarvis_api_key', this.config.apiKey);
         localStorage.setItem('jarvis_model', this.config.model);
         localStorage.setItem('jarvis_system_prompt', this.config.systemPrompt);
+        
+        localStorage.setItem('jarvis_voice_engine', this.config.voiceEngine);
+        localStorage.setItem('jarvis_elevenlabs_api_key', this.config.elevenLabsApiKey);
+        localStorage.setItem('jarvis_elevenlabs_voice_id', this.config.elevenLabsVoiceId);
+        localStorage.setItem('jarvis_elevenlabs_model', this.config.elevenLabsModel);
+        localStorage.setItem('jarvis_openai_voice', this.config.openAIVoice);
     }
 }
 

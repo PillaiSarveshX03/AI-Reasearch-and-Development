@@ -79,49 +79,132 @@
                 <button class="close-btn" id="close-settings-btn">&times;</button>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">LLM Provider</label>
-                <select class="form-select" id="provider-select">
-                    <option value="gemini">Google Gemini API (Recommended)</option>
-                    <option value="openai">OpenAI API (ChatGPT)</option>
-                </select>
+            <!-- Settings Tabs Navigation -->
+            <div class="settings-tabs">
+                <button type="button" class="tab-btn active" id="tab-btn-llm">LLM Brain</button>
+                <button type="button" class="tab-btn" id="tab-btn-voice">Voice & Audio</button>
             </div>
 
-            <div class="form-group">
-                <div class="form-label-row">
-                    <label class="form-label">API Key</label>
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="form-link" id="api-key-help-link">Get Free Gemini API Key ↗</a>
+            <!-- TAB 1: LLM BRAIN -->
+            <div class="tab-panel active" id="tab-panel-llm">
+                <div class="form-group">
+                    <label class="form-label">LLM Provider</label>
+                    <select class="form-select" id="provider-select">
+                        <option value="gemini">Google Gemini API (Recommended)</option>
+                        <option value="openai">OpenAI API (ChatGPT)</option>
+                    </select>
                 </div>
-                <div class="input-with-action">
-                    <input type="password" class="form-input" id="api-key-input" placeholder="Paste your API key here (e.g. AIzaSy...)">
-                    <button type="button" class="action-icon-btn" id="toggle-key-visibility" title="Show/Hide API Key">
-                        <svg id="eye-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                        </svg>
+
+                <div class="form-group">
+                    <div class="form-label-row">
+                        <label class="form-label">API Key</label>
+                        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="form-link" id="api-key-help-link">Get Free Gemini API Key ↗</a>
+                    </div>
+                    <div class="input-with-action">
+                        <input type="password" class="form-input" id="api-key-input" placeholder="Paste your API key here (e.g. AIzaSy...)">
+                        <button type="button" class="action-icon-btn" id="toggle-key-visibility" title="Show/Hide API Key">
+                            <svg id="eye-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Model Selection</label>
+                    <select class="form-select" id="model-select">
+                        <!-- Populated dynamically based on provider -->
+                    </select>
+                    <input type="text" class="form-input" id="model-input" placeholder="Enter custom model ID" style="display: none; margin-top: 6px;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">System Persona Prompt</label>
+                    <textarea class="form-textarea" id="system-prompt-input" rows="3" placeholder="Define how JARVIS should respond..."></textarea>
+                </div>
+
+                <!-- Test Connection Row -->
+                <div class="test-connection-section">
+                    <button type="button" class="secondary-btn" id="test-connection-btn">
+                        <span class="btn-spinner" id="test-spinner" style="display: none;"></span>
+                        <span id="test-btn-text">Test API Connection</span>
                     </button>
+                    <div class="connection-status-badge idle" id="connection-status-badge">Not tested</div>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">Model Selection</label>
-                <select class="form-select" id="model-select">
-                    <!-- Populated dynamically based on provider -->
-                </select>
-                <input type="text" class="form-input" id="model-input" placeholder="Enter custom model ID" style="display: none; margin-top: 6px;">
-            </div>
+            <!-- TAB 2: VOICE & AUDIO (ELEVENLABS) -->
+            <div class="tab-panel" id="tab-panel-voice">
+                <div class="form-group">
+                    <label class="form-label">Voice Synthesis Engine</label>
+                    <select class="form-select" id="voice-engine-select">
+                        <option value="elevenlabs">ElevenLabs AI Voice (Ultra-Realistic JARVIS)</option>
+                        <option value="browser">Browser Native SpeechSynthesis (Free)</option>
+                        <option value="openai">OpenAI TTS (Onyx / Echo)</option>
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">System Persona Prompt</label>
-                <textarea class="form-textarea" id="system-prompt-input" rows="3" placeholder="Define how JARVIS should respond..."></textarea>
-            </div>
+                <!-- ElevenLabs Configuration Fields -->
+                <div id="elevenlabs-settings-group">
+                    <div class="form-group">
+                        <div class="form-label-row">
+                            <label class="form-label">ElevenLabs API Key</label>
+                            <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener noreferrer" class="form-link">Get ElevenLabs Key ↗</a>
+                        </div>
+                        <div class="input-with-action">
+                            <input type="password" class="form-input" id="elevenlabs-key-input" placeholder="Paste your ElevenLabs API key...">
+                            <button type="button" class="action-icon-btn" id="toggle-elevenlabs-key-visibility" title="Show/Hide Key">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
 
-            <!-- Test Connection Row -->
-            <div class="test-connection-section">
-                <button type="button" class="secondary-btn" id="test-connection-btn">
-                    <span class="btn-spinner" id="test-spinner" style="display: none;"></span>
-                    <span id="test-btn-text">Test API Connection</span>
-                </button>
-                <div class="connection-status-badge idle" id="connection-status-badge">Not tested</div>
+                    <div class="form-group">
+                        <label class="form-label">Voice Persona</label>
+                        <select class="form-select" id="elevenlabs-voice-select">
+                            <option value="JBFqnCBsd6RMkjVDRZzb">George (British, Intelligent JARVIS Tone)</option>
+                            <option value="nPczCjzI2devNBz1zQrb">Brian (Deep British Narrator)</option>
+                            <option value="onwK4e9ZLuTAKqWW03F9">Daniel (Sophisticated British)</option>
+                            <option value="pNInz6obpgDQGcFmaJgB">Adam (Deep & Smooth)</option>
+                            <option value="custom">Custom Voice ID...</option>
+                        </select>
+                        <input type="text" class="form-input" id="elevenlabs-custom-voice-input" placeholder="Enter custom ElevenLabs Voice ID" style="display: none; margin-top: 6px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">ElevenLabs Model</label>
+                        <select class="form-select" id="elevenlabs-model-select">
+                            <option value="eleven_flash_v2_5">Eleven Flash v2.5 (Ultra Low Latency ~75ms)</option>
+                            <option value="eleven_turbo_v2_5">Eleven Turbo v2.5 (Balanced Quality & Speed)</option>
+                            <option value="eleven_multilingual_v2">Eleven Multilingual v2 (Maximum Expressiveness)</option>
+                        </select>
+                    </div>
+
+                    <!-- Test ElevenLabs Voice Button -->
+                    <div class="test-connection-section">
+                        <button type="button" class="secondary-btn" id="test-voice-btn">
+                            <span class="btn-spinner" id="voice-spinner" style="display: none;"></span>
+                            <span id="test-voice-btn-text">Test Voice Output</span>
+                        </button>
+                        <div class="connection-status-badge idle" id="voice-status-badge">Not tested</div>
+                    </div>
+                </div>
+
+                <!-- OpenAI TTS Fields -->
+                <div id="openai-tts-settings-group" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">OpenAI Voice</label>
+                        <select class="form-select" id="openai-voice-select">
+                            <option value="onyx">Onyx (Deep Male AI)</option>
+                            <option value="echo">Echo (Authoritative)</option>
+                            <option value="fable">Fable (British Accent)</option>
+                            <option value="alloy">Alloy (Balanced Neutral)</option>
+                            <option value="shimmer">Shimmer (Expressive Female)</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <button class="save-btn" id="save-settings-btn">Save Configuration</button>
