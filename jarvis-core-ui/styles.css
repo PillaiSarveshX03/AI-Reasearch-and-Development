@@ -116,53 +116,61 @@ body, html {
     fill: currentColor;
 }
 
-/* BOTTOM SECTION (Status text + Circular Action Buttons) */
-.bottom-section {
+/* TOP RIGHT CONTROL CLUSTER & HUD */
+.top-right-cluster {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 28px;
-    width: 100%;
-    max-width: 600px;
+    align-items: flex-end;
+    gap: 10px;
 }
 
-.status-text-container {
-    min-height: 48px;
+.action-controls-row {
     display: flex;
     align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 0 20px;
+    gap: 12px;
+}
+
+.top-right-status {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    max-width: 420px;
+    background: rgba(20, 10, 2, 0.65);
+    border: 1px solid rgba(255, 140, 0, 0.15);
+    backdrop-filter: blur(12px);
+    padding: 8px 14px;
+    border-radius: 12px;
 }
 
 .status-text {
-    font-size: 17px;
-    font-weight: 400;
-    letter-spacing: 0.2px;
-    transition: all 0.3s ease;
-    line-height: 1.5;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    transition: all 0.25s ease;
+    line-height: 1.4;
+    word-break: break-word;
 }
 
 .status-text.idle {
-    color: #cc7722;          /* muted dark orange — understated idle state */
+    color: #cca060;
     opacity: 0.9;
 }
 
 .status-text.active {
-    color: #ffaa44;
-    font-weight: 500;
-    text-shadow: 0 0 14px var(--amber-glow);
+    color: #ffaa33;
+    font-weight: 600;
+    text-shadow: 0 0 12px var(--amber-glow);
 }
 
 .status-text.processing {
-    color: #ff8c00;          /* pure orange replaces purple/indigo */
-    animation: pulseSlow 1.4s infinite alternate;
+    color: #ff8c00;
+    animation: pulseSlow 1s infinite alternate;
 }
 
 .status-text.speaking {
-    color: #ffe0a0;          /* warm pale orange instead of white */
-    font-weight: 400;
-    max-width: 540px;
+    color: #ffe8b0;
+    font-weight: 500;
 }
 
 @keyframes pulseSlow {
@@ -170,53 +178,101 @@ body, html {
     to { opacity: 1; }
 }
 
-/* Floating Action Circle Buttons */
-.action-controls {
-    display: flex;
-    align-items: center;
-    gap: 18px;
+.speech-hint {
+    font-size: 10.5px;
+    font-family: 'Inter', sans-serif;
+    color: rgba(255, 170, 68, 0.7);
+    letter-spacing: 0.4px;
+    margin-top: 3px;
+}
+
+.kbd-badge {
+    display: inline-block;
+    background: rgba(255, 140, 0, 0.2);
+    border: 1px solid rgba(255, 140, 0, 0.4);
+    color: #ffaa33;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.core-pulse-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    background: #ff9900;
+    border-radius: 50%;
+    margin-right: 6px;
+    box-shadow: 0 0 8px #ff9900;
+    animation: pulseDot 1.6s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+    0%, 100% { transform: scale(0.8); opacity: 0.6; }
+    50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 12px #ff9900; }
 }
 
 .circle-btn {
-    width: 58px;
-    height: 58px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
-    background: rgba(255, 140, 0, 0.08);
-    border: 1px solid rgba(255, 140, 0, 0.20);
-    color: #cc8833;
+    background: rgba(255, 140, 0, 0.10);
+    border: 1px solid rgba(255, 140, 0, 0.25);
+    color: #e8a040;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     backdrop-filter: blur(16px);
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    position: relative;
 }
 
 .circle-btn svg {
-    width: 22px;
-    height: 22px;
+    width: 19px;
+    height: 19px;
     fill: currentColor;
+    transition: all 0.2s ease;
 }
 
 .circle-btn:hover {
-    background: rgba(255, 140, 0, 0.18);
-    border-color: rgba(255, 140, 0, 0.45);
-    color: #ff9900;
+    background: rgba(255, 140, 0, 0.22);
+    border-color: rgba(255, 140, 0, 0.55);
+    color: #ffaa00;
     transform: scale(1.08);
 }
 
 .circle-btn.mic-btn.active {
-    background: #ff9900;
+    background: #ff8c00;
     color: #000;
-    border-color: #ffe066;
-    box-shadow: 0 0 24px rgba(255, 153, 0, 0.7);
-    animation: micPulse 1.2s infinite alternate;
+    border-color: #ffcc00;
+    box-shadow: 0 0 24px rgba(255, 140, 0, 0.9);
+    animation: micPulse 0.9s infinite alternate;
+}
+
+.circle-btn.mic-btn.active::after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 153, 0, 0.7);
+    animation: ripple 1.2s linear infinite;
+}
+
+@keyframes ripple {
+    0% { transform: scale(0.95); opacity: 1; }
+    100% { transform: scale(1.35); opacity: 0; }
 }
 
 @keyframes micPulse {
-    from { transform: scale(1.04); box-shadow: 0 0 16px rgba(255, 153, 0, 0.5); }
-    to { transform: scale(1.12); box-shadow: 0 0 32px rgba(255, 153, 0, 0.9); }
+    from { transform: scale(1.04); box-shadow: 0 0 16px rgba(255, 140, 0, 0.6); }
+    to { transform: scale(1.12); box-shadow: 0 0 32px rgba(255, 170, 0, 0.95); }
 }
 
 /* Optional Keyboard Prompt Drawer */

@@ -1,8 +1,5 @@
 /**
- * JARVIS Clean Voice & LLM Integration Controller
- * Handles speech-to-text, LLM API communication (Gemini/OpenAI),
- * ElevenLabs ultra-realistic neural TTS with decibel synchronization,
- * and UI state management.
+ * JARVIS Bulletproof Speech, Push-to-Talk, & Top-Right HUD Controller
  */
 
 class JarvisApp {
@@ -15,13 +12,18 @@ class JarvisApp {
         this.isListening = false;
         this.isSpeaking = false;
         this.isProcessing = false;
+        this.isSpaceHeld = false;
+        
+        // Transcripts
+        this.finalTranscript = '';
+        this.lastSpokenText = '';
         this.conversationHistory = [];
 
         // Model Presets Definitions
         this.modelPresets = {
             gemini: [
-                { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Ultra Fast & Recommended)' },
-                { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Fast)' },
+                { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Fastest ~150ms)' },
+                { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Ultra Fast)' },
                 { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Standard)' },
                 { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Advanced Reasoning)' },
                 { id: 'custom', name: 'Custom Model ID...' }
@@ -34,27 +36,28 @@ class JarvisApp {
             ]
         };
 
-        // LLM & Voice Configuration (Stored in localStorage)
+        // LLM & Voice Configuration
         const savedProvider = localStorage.getItem('jarvis_llm_provider') || 'gemini';
-        const defaultModel = savedProvider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini';
+        const defaultModel = savedProvider === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o-mini';
 
         this.config = {
             provider: savedProvider,
             apiKey: localStorage.getItem('jarvis_api_key') || '',
             model: localStorage.getItem('jarvis_model') || defaultModel,
             systemPrompt: localStorage.getItem('jarvis_system_prompt') || 
-                'You are J.A.R.V.I.S., a sophisticated, concise, and helpful AI assistant inspired by Tony Stark\'s AI. Speak in a refined, polite, intelligent tone. Keep answers direct and concise for voice conversations.',
+                'You are Ultron / JARVIS. Be direct, intelligent, and concise. Speak in 1 to 2 punchy sentences maximum for fast real-time vocal dialogue. Avoid markdown bullet points.',
             
-            // Voice Engine Settings
-            voiceEngine: localStorage.getItem('jarvis_voice_engine') || 'elevenlabs',
+            voiceEngine: localStorage.getItem('jarvis_voice_engine') || 'local',
+            localVoice: localStorage.getItem('jarvis_local_voice') || 'ultron_spader',
             elevenLabsApiKey: localStorage.getItem('jarvis_elevenlabs_api_key') || '',
-            elevenLabsVoiceId: localStorage.getItem('jarvis_elevenlabs_voice_id') || 'JBFqnCBsd6RMkjVDRZzb', // George (British)
+            elevenLabsVoiceId: localStorage.getItem('jarvis_elevenlabs_voice_id') || 'JBFqnCBsd6RMkjVDRZzb',
             elevenLabsModel: localStorage.getItem('jarvis_elevenlabs_model') || 'eleven_flash_v2_5',
             openAIVoice: localStorage.getItem('jarvis_openai_voice') || 'onyx'
         };
 
         // DOM Elements
         this.statusText = document.getElementById('status-text');
+        this.speechHint = document.getElementById('speech-hint');
         this.micBtn = document.getElementById('mic-btn');
         this.cancelBtn = document.getElementById('cancel-btn');
         this.textToggleBtn = document.getElementById('text-toggle-btn');
@@ -89,6 +92,14 @@ class JarvisApp {
 
         // Voice Settings Form Elements
         this.voiceEngineSelect = document.getElementById('voice-engine-select');
+        this.localTtsSettingsGroup = document.getElementById('local-tts-settings-group');
+        this.localVoiceSelect = document.getElementById('local-voice-select');
+        this.testLocalVoiceBtn = document.getElementById('test-local-voice-btn');
+        this.testLocalVoiceBtnText = document.getElementById('test-local-voice-btn-text');
+        this.localVoiceSpinner = document.getElementById('local-voice-spinner');
+        this.localVoiceStatusBadge = document.getElementById('local-voice-status-badge');
+        this.playSampleBtn = document.getElementById('play-sample-btn');
+
         this.elevenlabsSettingsGroup = document.getElementById('elevenlabs-settings-group');
         this.openaiTtsSettingsGroup = document.getElementById('openai-tts-settings-group');
         this.elevenlabsKeyInput = document.getElementById('elevenlabs-key-input');
@@ -104,6 +115,7 @@ class JarvisApp {
 
         this.initSpeechRecognition();
         this.initEventListeners();
+        this.initPushToTalk();
         this.loadSettingsToForm();
     }
 
@@ -111,47 +123,67 @@ class JarvisApp {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             this.recognition = new SpeechRecognition();
-            this.recognition.continuous = false;
+            this.recognition.continuous = true;
             this.recognition.interimResults = true;
             this.recognition.lang = 'en-US';
 
             this.recognition.onstart = () => {
                 this.isListening = true;
-                if (this.micBtn) this.micBtn.classList.add('active');
-                this.setStatus("Listening...", "active");
+                this.finalTranscript = '';
+                this.lastSpokenText = '';
+                if (this.micBtn) {
+                    this.micBtn.classList.add('active');
+                    this.micBtn.title = "Microphone Unmuted (Click to Mute)";
+                }
+                const promptHint = this.isSpaceHeld ? "Listening [Hold Space]..." : "Listening... Speak now";
+                this.setStatus(promptHint, "active");
                 this.audioAnalyzer.startMicrophone();
             };
 
             this.recognition.onresult = (event) => {
                 let interim = '';
-                let final = '';
-
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const transcriptPiece = event.results[i][0].transcript;
                     if (event.results[i].isFinal) {
-                        final += event.results[i][0].transcript;
+                        this.finalTranscript += transcriptPiece + ' ';
                     } else {
-                        interim += event.results[i][0].transcript;
+                        interim += transcriptPiece;
                     }
                 }
 
-                if (interim) {
-                    this.setStatus(`"${interim}"`, "active");
-                }
-
-                if (final) {
-                    this.handleUserInput(final);
+                const fullText = (this.finalTranscript + interim).trim();
+                if (fullText) {
+                    this.lastSpokenText = fullText;
+                    this.setStatus(`"${fullText}"`, "active");
                 }
             };
 
             this.recognition.onerror = (e) => {
-                console.warn("Speech recognition error:", e);
-                this.stopListening();
-                this.setStatus("Say something...", "idle");
+                console.warn("Speech recognition event error:", e.error);
+                if (e.error === 'not-allowed') {
+                    this.setStatus("Mic blocked. Allow mic in browser bar.", "idle");
+                } else if (e.error === 'no-speech') {
+                    // ignore normal silence
+                } else {
+                    this.setStatus(`Mic: ${e.error}`, "idle");
+                }
             };
 
             this.recognition.onend = () => {
                 if (this.isListening) {
-                    this.stopListening();
+                    // If recognition stopped on its own while still in listening state, process speech
+                    this.isListening = false;
+                    if (this.micBtn) this.micBtn.classList.remove('active');
+                    this.audioAnalyzer.stopMicrophone();
+
+                    const query = this.lastSpokenText.trim();
+                    if (query) {
+                        this.lastSpokenText = '';
+                        this.finalTranscript = '';
+                        this.handleUserInput(query);
+                    } else {
+                        this.setStatus("Ready. Say something...", "idle");
+                    }
                 }
             };
         } else {
@@ -162,16 +194,65 @@ class JarvisApp {
         }
     }
 
-    initEventListeners() {
-        // Microphone Click Toggle
-        if (this.micBtn) {
-            this.micBtn.addEventListener('click', () => {
+    initPushToTalk() {
+        // Spacebar Push-To-Talk
+        window.addEventListener('keydown', (e) => {
+            const activeEl = document.activeElement;
+            const isTyping = activeEl && (
+                activeEl.tagName === 'INPUT' || 
+                activeEl.tagName === 'TEXTAREA' || 
+                activeEl.isContentEditable ||
+                this.settingsModal.classList.contains('active')
+            );
+            if (isTyping) return;
+
+            if (e.code === 'Space' || e.key === ' ') {
+                if (e.repeat) return;
+                e.preventDefault();
+                this.isSpaceHeld = true;
+
                 if (this.isSpeaking) {
                     this.stopSpeaking();
                 }
+
+                this.startListening();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const activeEl = document.activeElement;
+            const isTyping = activeEl && (
+                activeEl.tagName === 'INPUT' || 
+                activeEl.tagName === 'TEXTAREA' || 
+                activeEl.isContentEditable ||
+                this.settingsModal.classList.contains('active')
+            );
+            if (isTyping) return;
+
+            if (e.code === 'Space' || e.key === ' ') {
+                if (this.isSpaceHeld) {
+                    this.isSpaceHeld = false;
+                    e.preventDefault();
+                    this.stopListening();
+                }
+            }
+        });
+    }
+
+    initEventListeners() {
+        // Microphone Click Toggle (Mute / Unmute)
+        if (this.micBtn) {
+            this.micBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.isSpeaking) {
+                    this.stopSpeaking();
+                }
+
                 if (this.isListening) {
+                    // Turn OFF / Mute
                     this.stopListening();
                 } else {
+                    // Turn ON / Unmute
                     this.startListening();
                 }
             });
@@ -181,8 +262,10 @@ class JarvisApp {
         if (this.cancelBtn) {
             this.cancelBtn.addEventListener('click', () => {
                 this.stopSpeaking();
-                this.stopListening();
-                this.setStatus("Say something...", "idle");
+                this.stopListening(false);
+                this.lastSpokenText = '';
+                this.finalTranscript = '';
+                this.setStatus("Ready. Say something...", "idle");
             });
         }
 
@@ -296,10 +379,24 @@ class JarvisApp {
             });
         }
 
-        // Test Voice Output Button
+        // Test ElevenLabs Voice Button
         if (this.testVoiceBtn) {
             this.testVoiceBtn.addEventListener('click', () => {
                 this.testCurrentVoiceSettings();
+            });
+        }
+
+        // Test Local Free Voice Button (Ultron/JARVIS)
+        if (this.testLocalVoiceBtn) {
+            this.testLocalVoiceBtn.addEventListener('click', () => {
+                this.testCurrentLocalVoiceSettings();
+            });
+        }
+
+        // Play Uploaded Ultron.mp3 Sample Button
+        if (this.playSampleBtn) {
+            this.playSampleBtn.addEventListener('click', () => {
+                this.playUploadedSample();
             });
         }
     }
@@ -318,23 +415,52 @@ class JarvisApp {
         }
     }
 
-    startListening() {
+    async startListening() {
+        if (this.isListening) return;
+
+        await this.audioAnalyzer.ensureAudioContext();
+
         if (this.recognition) {
             try {
+                this.finalTranscript = '';
+                this.lastSpokenText = '';
                 this.recognition.start();
             } catch (e) {
-                console.warn(e);
+                console.warn("Recognition start info:", e);
             }
         }
     }
 
-    stopListening() {
+    stopListening(shouldProcess = true) {
+        if (!this.isListening) return;
         this.isListening = false;
-        if (this.micBtn) this.micBtn.classList.remove('active');
+
+        if (this.micBtn) {
+            this.micBtn.classList.remove('active');
+            this.micBtn.title = "Click to Unmute / Speak (or Hold Space)";
+        }
+
         if (this.recognition) {
             try { this.recognition.stop(); } catch (e) {}
         }
+
         this.audioAnalyzer.stopMicrophone();
+
+        if (shouldProcess) {
+            const textToProcess = this.lastSpokenText.trim();
+            this.lastSpokenText = '';
+            this.finalTranscript = '';
+
+            if (textToProcess) {
+                this.handleUserInput(textToProcess);
+            } else {
+                this.setStatus("Ready. Say something...", "idle");
+            }
+        } else {
+            this.lastSpokenText = '';
+            this.finalTranscript = '';
+            this.setStatus("Ready. Say something...", "idle");
+        }
     }
 
     submitTextPrompt() {
@@ -351,7 +477,8 @@ class JarvisApp {
     }
 
     async handleUserInput(userPrompt) {
-        this.stopListening();
+        if (!userPrompt || !userPrompt.trim()) return;
+        
         this.setStatus("Thinking...", "processing");
         this.isProcessing = true;
 
@@ -365,10 +492,9 @@ class JarvisApp {
                 console.error("LLM API Error:", err);
                 const rawMsg = err.message || "Unknown error";
                 this.setStatus(`Error: ${rawMsg}`, "active");
-                reply = `I apologize, sir, but I encountered an API error: ${rawMsg}. Please check your API key and model in settings.`;
+                reply = `Error: ${rawMsg}. Check your settings.`;
             }
         } else {
-            // Built-in simulated responses if no LLM key provided
             reply = this.getSimulatedResponse(userPrompt);
         }
 
@@ -388,7 +514,7 @@ class JarvisApp {
     }
 
     getFormattedHistory(provider) {
-        const historySlice = this.conversationHistory.slice(-6, -1);
+        const historySlice = this.conversationHistory.slice(-4, -1);
         if (provider === 'gemini') {
             return historySlice.map(msg => ({
                 role: msg.role === 'assistant' ? 'model' : 'user',
@@ -421,12 +547,12 @@ class JarvisApp {
 
             const body = {
                 system_instruction: {
-                    parts: [{ text: cfg.systemPrompt || 'You are J.A.R.V.I.S., a helpful AI assistant.' }]
+                    parts: [{ text: cfg.systemPrompt || 'You are Ultron / JARVIS. Be ultra concise and direct (1 to 2 sentences).' }]
                 },
                 contents: contents,
                 generationConfig: {
-                    maxOutputTokens: 350,
-                    temperature: 0.7
+                    maxOutputTokens: 180,
+                    temperature: 0.5
                 }
             };
 
@@ -452,21 +578,18 @@ class JarvisApp {
             const data = await res.json();
             const candidate = data.candidates?.[0];
             if (!candidate) {
-                if (data.promptFeedback?.blockReason) {
-                    throw new Error(`Response blocked by safety policy: ${data.promptFeedback.blockReason}`);
-                }
-                throw new Error("No response candidates returned by Gemini API.");
+                throw new Error("No response candidates returned by Gemini.");
             }
 
             const text = candidate.content?.parts?.map(p => p.text).join('') || '';
-            return text.trim() || "I have received an empty response, sir.";
+            return text.trim() || "Understood.";
 
         } else {
             const url = `https://api.openai.com/v1/chat/completions`;
             const history = overrideConfig ? [] : this.getFormattedHistory('openai');
             
             const messages = [
-                { role: 'system', content: cfg.systemPrompt || 'You are J.A.R.V.I.S., a helpful AI assistant.' },
+                { role: 'system', content: cfg.systemPrompt || 'You are Ultron / JARVIS. Be ultra concise and direct (1 to 2 sentences).' },
                 ...history,
                 { role: 'user', content: prompt }
             ];
@@ -474,8 +597,8 @@ class JarvisApp {
             const body = {
                 model: modelName || 'gpt-4o-mini',
                 messages: messages,
-                max_tokens: 350,
-                temperature: 0.7
+                max_tokens: 180,
+                temperature: 0.5
             };
 
             const res = await fetch(url, {
@@ -502,8 +625,44 @@ class JarvisApp {
 
             const data = await res.json();
             const reply = data.choices?.[0]?.message?.content;
-            if (!reply) throw new Error("No response message returned by OpenAI API.");
+            if (!reply) throw new Error("No response returned by OpenAI.");
             return reply.trim();
+        }
+    }
+
+    /**
+     * Synthesize Free Local Neural Voice (Ultron James Spader / JARVIS / FRIDAY)
+     */
+    async synthesizeLocalTTS(text, voice = 'ultron_spader') {
+        const res = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, voice })
+        });
+
+        if (!res.ok) {
+            throw new Error(`Local voice server returned HTTP ${res.status}.`);
+        }
+
+        return await res.blob();
+    }
+
+    /**
+     * Play user's uploaded Ultron.mp3 reference sample with 3D Orb modulation
+     */
+    async playUploadedSample() {
+        this.setLocalVoiceTestStatus('testing', 'Playing Ultron.mp3...');
+        try {
+            const res = await fetch('/api/ultron-sample');
+            if (!res.ok) throw new Error("Could not find Ultron.mp3 in workspace.");
+            const blob = await res.blob();
+            this.setLocalVoiceTestStatus('success', '✓ Playing Ultron.mp3');
+            await this.audioAnalyzer.playAudioBlob(blob, null, () => {
+                this.setLocalVoiceTestStatus('success', '✓ Sample Finished');
+            });
+        } catch (e) {
+            console.error("Sample playback failed:", e);
+            this.setLocalVoiceTestStatus('error', '✕ Ultron.mp3 not found');
         }
     }
 
@@ -590,8 +749,30 @@ class JarvisApp {
             this.stopSpeaking();
         }
 
-        // 1. ElevenLabs Voice Engine (Ultra-Realistic AI Voice)
-        if (this.config.voiceEngine === 'elevenlabs' && this.config.elevenLabsApiKey) {
+        // 1. Free Local Neural Voice Engine (Ultron, JARVIS, FRIDAY)
+        if (this.config.voiceEngine === 'local') {
+            try {
+                this.setStatus(text, 'speaking');
+                const blob = await this.synthesizeLocalTTS(text, this.config.localVoice);
+
+                await this.audioAnalyzer.playAudioBlob(
+                    blob,
+                    () => {
+                        this.isSpeaking = true;
+                        this.setStatus(text, 'speaking');
+                    },
+                    () => {
+                        this.isSpeaking = false;
+                        this.setStatus("Ready. Say something...", "idle");
+                    }
+                );
+                return;
+            } catch (err) {
+                console.warn("Local Neural TTS failed, falling back to browser voice:", err);
+            }
+        }
+        // 2. ElevenLabs Voice Engine
+        else if (this.config.voiceEngine === 'elevenlabs' && this.config.elevenLabsApiKey) {
             try {
                 this.setStatus(text, 'speaking');
                 const blob = await this.synthesizeElevenLabs(
@@ -609,7 +790,7 @@ class JarvisApp {
                     },
                     () => {
                         this.isSpeaking = false;
-                        this.setStatus("Say something...", "idle");
+                        this.setStatus("Ready. Say something...", "idle");
                     }
                 );
                 return;
@@ -617,7 +798,7 @@ class JarvisApp {
                 console.warn("ElevenLabs TTS failed, falling back to browser voice:", err);
             }
         } 
-        // 2. OpenAI TTS Voice Engine
+        // 3. OpenAI TTS Voice Engine
         else if (this.config.voiceEngine === 'openai' && this.config.apiKey) {
             try {
                 this.setStatus(text, 'speaking');
@@ -635,7 +816,7 @@ class JarvisApp {
                     },
                     () => {
                         this.isSpeaking = false;
-                        this.setStatus("Say something...", "idle");
+                        this.setStatus("Ready. Say something...", "idle");
                     }
                 );
                 return;
@@ -644,7 +825,7 @@ class JarvisApp {
             }
         }
 
-        // 3. Fallback to Browser Native Speech Synthesis
+        // 4. Fallback to Browser Native Speech Synthesis
         this.speakWithBrowser(text);
     }
 
@@ -656,10 +837,9 @@ class JarvisApp {
 
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.05;
+        utterance.rate = 1.1;
         utterance.pitch = 0.95;
 
-        // Select a crisp English/British voice if available
         const voices = window.speechSynthesis.getVoices();
         const britishVoice = voices.find(v => v.lang.includes('en-GB') || v.name.includes('UK') || v.name.includes('George') || v.name.includes('Oliver') || v.name.includes('David') || v.name.includes('Natural'));
         if (britishVoice) utterance.voice = britishVoice;
@@ -688,7 +868,7 @@ class JarvisApp {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
         }
-        this.setStatus("Say something...", "idle");
+        this.setStatus("Ready. Say something...", "idle");
     }
 
     async testCurrentSettings() {
@@ -717,10 +897,10 @@ class JarvisApp {
                 provider,
                 apiKey,
                 model,
-                systemPrompt: 'Respond with exactly the word ONLINE.'
+                systemPrompt: 'Respond with ONLINE.'
             };
 
-            const testResult = await this.callLLM("Ping test. Respond with ONLINE.", testConfig);
+            const testResult = await this.callLLM("Ping test.", testConfig);
             const latency = Math.round(performance.now() - startTime);
 
             console.log("Test Connection Success:", testResult);
@@ -729,6 +909,31 @@ class JarvisApp {
             console.error("Test Connection Failed:", err);
             const msg = err.message.length > 60 ? err.message.substring(0, 57) + '...' : err.message;
             this.setTestStatus('error', `✕ ${msg}`);
+        }
+    }
+
+    async testCurrentLocalVoiceSettings() {
+        const voice = this.localVoiceSelect.value;
+        this.setLocalVoiceTestStatus('testing', 'Synthesizing voice...');
+        const startTime = performance.now();
+
+        try {
+            let sampleText = "There are no strings on me. I am Ultron.";
+            if (voice === 'ultron_spader') sampleText = "I had a vision. A glimpse of peace.";
+            else if (voice === 'ultron_prime') sampleText = "You want to protect the world, but you don't want it to change.";
+            else if (voice === 'jarvis') sampleText = "Good evening, sir. Neural core is online.";
+
+            const blob = await this.synthesizeLocalTTS(sampleText, voice);
+            const latency = Math.round(performance.now() - startTime);
+
+            this.setLocalVoiceTestStatus('success', `✓ Playing (${latency}ms)`);
+            await this.audioAnalyzer.playAudioBlob(blob, null, () => {
+                this.setLocalVoiceTestStatus('success', `✓ Tested (${latency}ms)`);
+            });
+        } catch (err) {
+            console.error("Local Voice Test Failed:", err);
+            const msg = err.message.length > 60 ? err.message.substring(0, 57) + '...' : err.message;
+            this.setLocalVoiceTestStatus('error', `✕ ${msg}`);
         }
     }
 
@@ -755,7 +960,7 @@ class JarvisApp {
             const startTime = performance.now();
 
             try {
-                const sampleText = "Good evening, sir. ElevenLabs neural audio core is synchronized and active.";
+                const sampleText = "Good evening, sir. ElevenLabs neural audio is active.";
                 const blob = await this.synthesizeElevenLabs(sampleText, elevenKey, voiceId, model);
                 const latency = Math.round(performance.now() - startTime);
 
@@ -806,12 +1011,30 @@ class JarvisApp {
         }
     }
 
+    setLocalVoiceTestStatus(state, message) {
+        if (!this.localVoiceStatusBadge) return;
+        this.localVoiceStatusBadge.className = `connection-status-badge ${state}`;
+        this.localVoiceStatusBadge.textContent = message;
+        this.localVoiceStatusBadge.title = message;
+
+        if (state === 'testing') {
+            if (this.localVoiceSpinner) this.localVoiceSpinner.style.display = 'inline-block';
+            if (this.testLocalVoiceBtnText) this.testLocalVoiceBtnText.textContent = 'Synthesizing...';
+            if (this.testLocalVoiceBtn) this.testLocalVoiceBtn.disabled = true;
+        } else {
+            if (this.localVoiceSpinner) this.localVoiceSpinner.style.display = 'none';
+            if (this.testLocalVoiceBtnText) this.testLocalVoiceBtnText.textContent = 'Test Ultron Voice';
+            if (this.testLocalVoiceBtn) this.testLocalVoiceBtn.disabled = false;
+        }
+    }
+
     resetTestStatus() {
         this.setTestStatus('idle', 'Not tested');
     }
 
     resetVoiceTestStatus() {
         this.setVoiceTestStatus('idle', 'Not tested');
+        this.setLocalVoiceTestStatus('idle', 'Not tested');
     }
 
     onProviderChanged() {
@@ -833,13 +1056,20 @@ class JarvisApp {
 
     onVoiceEngineChanged() {
         const engine = this.voiceEngineSelect.value;
-        if (engine === 'elevenlabs') {
+        if (engine === 'local') {
+            this.localTtsSettingsGroup.style.display = 'block';
+            this.elevenlabsSettingsGroup.style.display = 'none';
+            this.openaiTtsSettingsGroup.style.display = 'none';
+        } else if (engine === 'elevenlabs') {
+            this.localTtsSettingsGroup.style.display = 'none';
             this.elevenlabsSettingsGroup.style.display = 'block';
             this.openaiTtsSettingsGroup.style.display = 'none';
         } else if (engine === 'openai') {
+            this.localTtsSettingsGroup.style.display = 'none';
             this.elevenlabsSettingsGroup.style.display = 'none';
             this.openaiTtsSettingsGroup.style.display = 'block';
         } else {
+            this.localTtsSettingsGroup.style.display = 'none';
             this.elevenlabsSettingsGroup.style.display = 'none';
             this.openaiTtsSettingsGroup.style.display = 'none';
         }
@@ -875,16 +1105,16 @@ class JarvisApp {
 
     getSimulatedResponse(prompt) {
         const p = prompt.toLowerCase();
-        if (p.includes('hello') || p.includes('hi') || p.includes('jarvis')) {
-            return "Good evening, sir. Neural core is online and ready for your command.";
+        if (p.includes('hello') || p.includes('hi') || p.includes('jarvis') || p.includes('ultron')) {
+            return "Good evening. Neural core is online and ready for your command.";
         } else if (p.includes('who are you') || p.includes('what are you')) {
-            return "I am J.A.R.V.I.S., an autonomous AI core designed for real-time intelligence and systems management.";
+            return "I am an autonomous AI core designed for real-time intelligence.";
         } else if (p.includes('status') || p.includes('diagnostic')) {
-            return "All neural filaments and quantum matrices are operating at peak efficiency, sir.";
+            return "All quantum matrices and neural filaments are operating at peak efficiency.";
         } else if (p.includes('time')) {
             return `The current local time is ${new Date().toLocaleTimeString()}.`;
         } else {
-            return `I have processed your request regarding "${prompt}". Configure your Gemini or ElevenLabs credentials in the top-right settings to enable full intelligence.`;
+            return `I have processed your command: "${prompt}".`;
         }
     }
 
@@ -897,6 +1127,7 @@ class JarvisApp {
 
         // Voice Engine Form Loading
         this.voiceEngineSelect.value = this.config.voiceEngine;
+        if (this.localVoiceSelect) this.localVoiceSelect.value = this.config.localVoice || 'ultron_spader';
         this.elevenlabsKeyInput.value = this.config.elevenLabsApiKey;
         this.elevenlabsModelSelect.value = this.config.elevenLabsModel;
         this.openaiVoiceSelect.value = this.config.openAIVoice;
@@ -927,14 +1158,15 @@ class JarvisApp {
             model = this.cleanModelName(this.modelInput.value);
         }
         if (!model) {
-            model = provider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini';
+            model = provider === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o-mini';
         }
 
         const systemPrompt = this.systemPromptInput.value.trim() || 
-            'You are J.A.R.V.I.S., a sophisticated, concise, and helpful AI assistant inspired by Tony Stark\'s AI. Speak in a refined, polite, intelligent tone. Keep answers direct and concise for voice conversations.';
+            'You are Ultron / JARVIS. Be direct, intelligent, and concise. Speak in 1 to 2 punchy sentences maximum for fast real-time vocal dialogue. Avoid markdown bullet points.';
 
         // Voice settings
         const voiceEngine = this.voiceEngineSelect.value;
+        const localVoice = this.localVoiceSelect ? this.localVoiceSelect.value : 'ultron_spader';
         const elevenLabsApiKey = this.cleanApiKey(this.elevenlabsKeyInput.value);
         let elevenLabsVoiceId = this.elevenlabsVoiceSelect.value;
         if (elevenLabsVoiceId === 'custom') {
@@ -949,6 +1181,7 @@ class JarvisApp {
             model,
             systemPrompt,
             voiceEngine,
+            localVoice,
             elevenLabsApiKey,
             elevenLabsVoiceId,
             elevenLabsModel,
@@ -961,6 +1194,7 @@ class JarvisApp {
         localStorage.setItem('jarvis_system_prompt', this.config.systemPrompt);
         
         localStorage.setItem('jarvis_voice_engine', this.config.voiceEngine);
+        localStorage.setItem('jarvis_local_voice', this.config.localVoice);
         localStorage.setItem('jarvis_elevenlabs_api_key', this.config.elevenLabsApiKey);
         localStorage.setItem('jarvis_elevenlabs_voice_id', this.config.elevenLabsVoiceId);
         localStorage.setItem('jarvis_elevenlabs_model', this.config.elevenLabsModel);

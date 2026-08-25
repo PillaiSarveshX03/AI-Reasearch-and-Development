@@ -84,78 +84,59 @@ class JarvisAudioAnalyzer {
     }
 
     /**
-     * Plays an audio Blob (from ElevenLabs or OpenAI TTS) with real-time spectrum analysis
+     * Instant zero-latency audio playback connected to 3D spectrum analyzer
      */
     async playAudioBlob(blob, onStart = null, onEnd = null) {
         await this.ensureAudioContext();
         this.stopAudioPlayback();
 
         try {
-            // Method 1: Web Audio Buffer Source (Direct FFT frequency modulation)
-            const arrayBuffer = await blob.arrayBuffer();
-            const audioBuffer = await this.audioCtx.decodeAudioData(arrayBuffer.slice(0));
+            const audioUrl = URL.createObjectURL(blob);
+            const audio = new Audio(audioUrl);
+            this.currentAudioElement = audio;
 
-            const source = this.audioCtx.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(this.outputAnalyser);
+            // Connect audio element directly to spectrum analyzer
+            try {
+                if (!audio._sourceNode && this.audioCtx) {
+                    const sourceNode = this.audioCtx.createMediaElementSource(audio);
+                    sourceNode.connect(this.outputAnalyser);
+                    audio._sourceNode = sourceNode;
+                }
+            } catch (e) {}
 
-            this.currentSource = source;
             this.isPlayingAudio = true;
             this.setSpeaking(true);
 
-            source.onended = () => {
+            audio.onplay = () => {
+                if (onStart) onStart();
+            };
+
+            audio.onended = () => {
                 this.isPlayingAudio = false;
                 this.setSpeaking(false);
-                this.currentSource = null;
+                URL.revokeObjectURL(audioUrl);
+                this.currentAudioElement = null;
                 if (onEnd) onEnd();
             };
 
-            if (onStart) onStart();
-            source.start(0);
-            return source;
-        } catch (decodeErr) {
-            console.warn("WebAudio decodeAudioData failed, falling back to HTML5 Audio element:", decodeErr);
-
-            // Method 2: HTML5 Audio Element Fallback
-            try {
-                const audioUrl = URL.createObjectURL(blob);
-                const audio = new Audio(audioUrl);
-                this.currentAudioElement = audio;
-
-                // Try connecting element to analyser if possible
-                try {
-                    const sourceNode = this.audioCtx.createMediaElementSource(audio);
-                    sourceNode.connect(this.outputAnalyser);
-                } catch (e) {}
-
-                this.isPlayingAudio = true;
-                this.setSpeaking(true);
-
-                audio.onended = () => {
-                    this.isPlayingAudio = false;
-                    this.setSpeaking(false);
-                    URL.revokeObjectURL(audioUrl);
-                    this.currentAudioElement = null;
-                    if (onEnd) onEnd();
-                };
-
-                audio.onerror = (e) => {
-                    this.isPlayingAudio = false;
-                    this.setSpeaking(false);
-                    URL.revokeObjectURL(audioUrl);
-                    this.currentAudioElement = null;
-                    if (onEnd) onEnd();
-                };
-
-                if (onStart) onStart();
-                await audio.play();
-                return audio;
-            } catch (fallbackErr) {
+            audio.onerror = (e) => {
+                console.warn("Audio playback error:", e);
                 this.isPlayingAudio = false;
                 this.setSpeaking(false);
+                URL.revokeObjectURL(audioUrl);
+                this.currentAudioElement = null;
                 if (onEnd) onEnd();
-                throw fallbackErr;
-            }
+            };
+
+            // Play instantly
+            await audio.play();
+            return audio;
+        } catch (err) {
+            console.warn("Direct audio playback failed:", err);
+            this.isPlayingAudio = false;
+            this.setSpeaking(false);
+            if (onEnd) onEnd();
+            throw err;
         }
     }
 

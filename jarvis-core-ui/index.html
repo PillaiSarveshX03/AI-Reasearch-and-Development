@@ -16,58 +16,58 @@
     <!-- Minimalist Interface Overlay -->
     <div class="ui-overlay">
         
-        <!-- Top Bar -->
+        <!-- Top Bar with Top-Right Action Controls & Status -->
         <header class="top-bar interactive">
-            <div class="brand-tag">J.A.R.V.I.S. <span>//</span> AI</div>
-            <button class="icon-btn" id="settings-btn" title="AI Configuration & API Settings">
-                <!-- Clean Gear SVG Icon -->
-                <svg viewBox="0 0 24 24">
-                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
-                </svg>
-            </button>
+            <div class="brand-tag">
+                <span class="core-pulse-dot"></span>
+                J.A.R.V.I.S. <span>//</span> AI CORE
+            </div>
+
+            <!-- Top-Right Control Cluster -->
+            <div class="top-right-cluster">
+                <div class="action-controls-row">
+                    <!-- Cancel / Stop Button -->
+                    <button class="circle-btn" id="cancel-btn" title="Cancel / Stop Output">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                        </svg>
+                    </button>
+
+                    <!-- Voice Mic Button (Mute / Unmute / Push-to-Talk) -->
+                    <button class="circle-btn mic-btn" id="mic-btn" title="Click to Unmute / Mute (or Hold Space)">
+                        <svg viewBox="0 0 24 24" id="mic-icon-svg">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
+                        </svg>
+                    </button>
+
+                    <!-- Keyboard Text Drawer Toggle -->
+                    <button class="circle-btn" id="text-toggle-btn" title="Toggle Text Prompt Input">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
+                        </svg>
+                    </button>
+
+                    <!-- Settings Button -->
+                    <button class="circle-btn" id="settings-btn" title="AI Configuration & API Settings">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Text Drawer positioned in Top-Right -->
+                <div class="text-drawer" id="text-drawer">
+                    <input type="text" class="text-input" id="text-input" placeholder="Type command & press Enter...">
+                    <button class="send-btn" id="send-text-btn" title="Send">↑</button>
+                </div>
+
+                <!-- Dynamic Status / Transcript text directly BELOW top-right buttons -->
+                <div class="status-container top-right-status">
+                    <div class="status-text idle" id="status-text">Ready. Say something...</div>
+                    <div class="speech-hint" id="speech-hint">Hold <span class="kbd-badge">Space</span> or Click <span class="kbd-badge">Mic</span></div>
+                </div>
+            </div>
         </header>
-
-        <!-- Bottom Section: Status & Controls -->
-        <div class="bottom-section interactive">
-            
-            <!-- Dynamic Status / Transcript Text -->
-            <div class="status-text-container">
-                <div class="status-text idle" id="status-text">Say something...</div>
-            </div>
-
-            <!-- Optional Text Prompt Drawer -->
-            <div class="text-drawer" id="text-drawer">
-                <input type="text" class="text-input" id="text-input" placeholder="Type a message or prompt...">
-                <button class="send-btn" id="send-text-btn" title="Send">↑</button>
-            </div>
-
-            <!-- Minimalist Action Buttons -->
-            <div class="action-controls">
-                
-                <!-- Cancel / Stop Button -->
-                <button class="circle-btn" id="cancel-btn" title="Cancel / Stop">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                    </svg>
-                </button>
-
-                <!-- Voice Mic Button -->
-                <button class="circle-btn mic-btn" id="mic-btn" title="Click to Speak">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
-                    </svg>
-                </button>
-
-                <!-- Keyboard Toggle Button -->
-                <button class="circle-btn" id="text-toggle-btn" title="Toggle Text Prompt Input">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
-                    </svg>
-                </button>
-
-            </div>
-
-        </div>
 
     </div>
 
@@ -138,14 +138,41 @@
                 <div class="form-group">
                     <label class="form-label">Voice Synthesis Engine</label>
                     <select class="form-select" id="voice-engine-select">
-                        <option value="elevenlabs">ElevenLabs AI Voice (Ultra-Realistic JARVIS)</option>
+                        <option value="local">Local Neural Voices (Free & Unlimited - Ultron / JARVIS / FRIDAY)</option>
+                        <option value="elevenlabs">ElevenLabs AI Voice (Neural)</option>
                         <option value="browser">Browser Native SpeechSynthesis (Free)</option>
                         <option value="openai">OpenAI TTS (Onyx / Echo)</option>
                     </select>
                 </div>
 
+                <!-- Local Neural TTS Configuration Fields -->
+                <div id="local-tts-settings-group">
+                    <div class="form-group">
+                        <label class="form-label">Character Persona (100% Free)</label>
+                        <select class="form-select" id="local-voice-select">
+                            <option value="ultron_spader">🤖 Ultron (James Spader - Cloned from Ultron.mp3)</option>
+                            <option value="ultron_prime">💀 Ultron Prime (Deep Menacing Robotic Bass)</option>
+                            <option value="jarvis">🎩 J.A.R.V.I.S. (Classic British AI Core)</option>
+                            <option value="friday">⚡ F.R.I.D.A.Y. (Irish/British Female AI)</option>
+                            <option value="tony">🕶️ Tony Stark (American Baritone)</option>
+                        </select>
+                    </div>
+
+                    <!-- Test Local Voice Button -->
+                    <div class="test-connection-section">
+                        <button type="button" class="secondary-btn" id="test-local-voice-btn">
+                            <span class="btn-spinner" id="local-voice-spinner" style="display: none;"></span>
+                            <span id="test-local-voice-btn-text">Test Ultron Voice</span>
+                        </button>
+                        <button type="button" class="secondary-btn" id="play-sample-btn" title="Play your uploaded Ultron.mp3">
+                            ▶ Play Sample (Ultron.mp3)
+                        </button>
+                        <div class="connection-status-badge idle" id="local-voice-status-badge">Ready</div>
+                    </div>
+                </div>
+
                 <!-- ElevenLabs Configuration Fields -->
-                <div id="elevenlabs-settings-group">
+                <div id="elevenlabs-settings-group" style="display: none;">
                     <div class="form-group">
                         <div class="form-label-row">
                             <label class="form-label">ElevenLabs API Key</label>
