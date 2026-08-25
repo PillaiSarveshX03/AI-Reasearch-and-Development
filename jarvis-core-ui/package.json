@@ -1,0 +1,13 @@
+{
+  "name": "jarvis-core-ui",
+  "version": "1.0.0",
+  "description": "JARVIS Holographic Voice & LLM Autonomous AI Core",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve . -l 8000",
+    "dev": "py -m http.server 8000"
+  },
+  "keywords": ["jarvis", "threejs", "gemini", "openai", "ai-core", "voice-assistant"],
+  "author": "",
+  "license": "ISC"
+}
