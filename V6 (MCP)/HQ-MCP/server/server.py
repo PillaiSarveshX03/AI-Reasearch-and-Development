@@ -1,4 +1,7 @@
+import sqlite3
+
 from mcp.server.mcpserver import MCPServer
+
 
 mcp = MCPServer(
     name="HQ-MCP",
@@ -6,53 +9,112 @@ mcp = MCPServer(
     description="Fictional aircraft information and maintenance MCP server"
 )
 
-aircraft_data = {
-    "FALCON-001": {
-        "model": "HX-9",
-        "squadron": "Alpha",
-        "fuel": 78,
-        "flight_hours": 142,
-        "status": "Operational"
-    },
-    "FALCON-002": {
-        "model": "HX-9",
-        "squadron": "Bravo",
-        "fuel": 42,
-        "flight_hours": 219,
-        "status": "Maintenance"
-    }
-}
+
+DATABASE = "database/aircraft.db"
+
 
 @mcp.tool()
 def get_aircraft_status(aircraft_id: str) -> str:
     """Get the status and basic information of a simulated aircraft."""
 
-    aircraft = aircraft_data.get(aircraft_id)
+    connection = sqlite3.connect(DATABASE)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT aircraft_id, model, squadron, fuel, flight_hours, status
+        FROM aircraft
+        WHERE aircraft_id = ?
+        """,
+        (aircraft_id,)
+    )
+
+    aircraft = cursor.fetchone()
+
+    connection.close()
 
     if aircraft is None:
         return f"Aircraft {aircraft_id} was not found."
 
     return (
-        f"Aircraft ID: {aircraft_id} \n"
-        f"Model: {aircraft['model']}\n"
-        f"Squadron: {aircraft['squadron']}\n"
-        f"Fuel: {aircraft['fuel']}%\n"
-        f"Flight Hours: {aircraft['flight_hours']}\n"
-        f"Status: {aircraft['status']}"
+        f"Aircraft ID: {aircraft[0]}\n"
+        f"Model: {aircraft[1]}\n"
+        f"Squadron: {aircraft[2]}\n"
+        f"Fuel: {aircraft[3]}%\n"
+        f"Flight Hours: {aircraft[4]}\n"
+        f"Status: {aircraft[5]}"
     )
+
 
 @mcp.tool()
 def get_aircraft_list() -> str:
     """Get a list of all simulated aircraft."""
 
-    aircraft_list = []
+    connection = sqlite3.connect(DATABASE)
+    cursor = connection.cursor()
 
-    for aircraft_id, aircraft in aircraft_data.items():
-        aircraft_list.append(
-            f"{aircraft_id} - {aircraft['model']} - {aircraft['status']}"
+    cursor.execute(
+        """
+        SELECT aircraft_id, model, status
+        FROM aircraft
+        """
+    )
+
+    aircraft = cursor.fetchall()
+
+    connection.close()
+
+    if not aircraft:
+        return "No aircraft found."
+
+    return "\n".join(
+        f"{aircraft_id} - {model} - {status}"
+        for aircraft_id, model, status in aircraft
+    )
+
+
+@mcp.tool()
+def get_maintenance_history(aircraft_id: str) -> str:
+    """Get the maintenance history of a simulated aircraft."""
+
+    connection = sqlite3.connect(DATABASE)
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT maintenance_date,
+               maintenance_type,
+               description,
+               technician
+        FROM maintenance
+        WHERE aircraft_id = ?
+        ORDER BY maintenance_date DESC
+        """,
+        (aircraft_id,)
+    )
+
+    records = cursor.fetchall()
+
+    connection.close()
+
+    if not records:
+        return f"No maintenance records found for {aircraft_id}."
+
+    result = []
+
+    for record in records:
+        maintenance_date, maintenance_type, description, technician = record
+
+        result.append(
+            f"Date: {maintenance_date}\n"
+            f"Type: {maintenance_type}\n"
+            f"Description: {description}\n"
+            f"Technician: {technician}"
         )
 
-    return "\n".join(aircraft_list)
+    return "\n\n".join(result)
+
+
 
 if __name__ == "__main__":
     mcp.run()
