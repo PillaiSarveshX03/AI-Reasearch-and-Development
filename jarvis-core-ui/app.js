@@ -162,16 +162,11 @@ class JarvisApp {
                 console.warn("Speech recognition event error:", e.error);
                 if (e.error === 'not-allowed') {
                     this.setStatus("Mic blocked. Allow mic in browser bar.", "idle");
-                } else if (e.error === 'no-speech') {
-                    // ignore normal silence
-                } else {
-                    this.setStatus(`Mic: ${e.error}`, "idle");
                 }
             };
 
             this.recognition.onend = () => {
                 if (this.isListening) {
-                    // If recognition stopped on its own while still in listening state, process speech
                     this.isListening = false;
                     if (this.micBtn) this.micBtn.classList.remove('active');
                     this.audioAnalyzer.stopMicrophone();
@@ -195,7 +190,6 @@ class JarvisApp {
     }
 
     initPushToTalk() {
-        // Spacebar Push-To-Talk
         window.addEventListener('keydown', (e) => {
             const activeEl = document.activeElement;
             const isTyping = activeEl && (
@@ -240,7 +234,6 @@ class JarvisApp {
     }
 
     initEventListeners() {
-        // Microphone Click Toggle (Mute / Unmute)
         if (this.micBtn) {
             this.micBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -249,16 +242,13 @@ class JarvisApp {
                 }
 
                 if (this.isListening) {
-                    // Turn OFF / Mute
                     this.stopListening();
                 } else {
-                    // Turn ON / Unmute
                     this.startListening();
                 }
             });
         }
 
-        // Cancel / Reset Button
         if (this.cancelBtn) {
             this.cancelBtn.addEventListener('click', () => {
                 this.stopSpeaking();
@@ -269,7 +259,6 @@ class JarvisApp {
             });
         }
 
-        // Text Toggle
         if (this.textToggleBtn) {
             this.textToggleBtn.addEventListener('click', () => {
                 this.textDrawer.classList.toggle('open');
@@ -279,7 +268,6 @@ class JarvisApp {
             });
         }
 
-        // Send Text
         if (this.sendTextBtn) {
             this.sendTextBtn.addEventListener('click', () => this.submitTextPrompt());
         }
@@ -289,13 +277,11 @@ class JarvisApp {
             });
         }
 
-        // Settings Modal Tabs
         if (this.tabBtnLlm && this.tabBtnVoice) {
             this.tabBtnLlm.addEventListener('click', () => this.switchTab('llm'));
             this.tabBtnVoice.addEventListener('click', () => this.switchTab('voice'));
         }
 
-        // Settings Modal Open/Close
         if (this.settingsBtn) {
             this.settingsBtn.addEventListener('click', () => {
                 this.loadSettingsToForm();
@@ -319,14 +305,12 @@ class JarvisApp {
             });
         }
 
-        // Provider Change Listener
         if (this.providerSelect) {
             this.providerSelect.addEventListener('change', () => {
                 this.onProviderChanged();
             });
         }
 
-        // Model Select Listener
         if (this.modelSelect) {
             this.modelSelect.addEventListener('change', () => {
                 if (this.modelSelect.value === 'custom') {
@@ -339,7 +323,6 @@ class JarvisApp {
             });
         }
 
-        // API Key Visibility Toggle
         if (this.toggleKeyVisibilityBtn) {
             this.toggleKeyVisibilityBtn.addEventListener('click', () => {
                 this.apiKeyInput.type = this.apiKeyInput.type === 'password' ? 'text' : 'password';
@@ -352,14 +335,12 @@ class JarvisApp {
             });
         }
 
-        // Voice Engine Change Listener
         if (this.voiceEngineSelect) {
             this.voiceEngineSelect.addEventListener('change', () => {
                 this.onVoiceEngineChanged();
             });
         }
 
-        // ElevenLabs Voice Select Listener
         if (this.elevenlabsVoiceSelect) {
             this.elevenlabsVoiceSelect.addEventListener('change', () => {
                 if (this.elevenlabsVoiceSelect.value === 'custom') {
@@ -372,28 +353,24 @@ class JarvisApp {
             });
         }
 
-        // Test API Connection Button
         if (this.testConnectionBtn) {
             this.testConnectionBtn.addEventListener('click', () => {
                 this.testCurrentSettings();
             });
         }
 
-        // Test ElevenLabs Voice Button
         if (this.testVoiceBtn) {
             this.testVoiceBtn.addEventListener('click', () => {
                 this.testCurrentVoiceSettings();
             });
         }
 
-        // Test Local Free Voice Button (Ultron/JARVIS)
         if (this.testLocalVoiceBtn) {
             this.testLocalVoiceBtn.addEventListener('click', () => {
                 this.testCurrentLocalVoiceSettings();
             });
         }
 
-        // Play Uploaded Ultron.mp3 Sample Button
         if (this.playSampleBtn) {
             this.playSampleBtn.addEventListener('click', () => {
                 this.playUploadedSample();
@@ -426,7 +403,7 @@ class JarvisApp {
                 this.lastSpokenText = '';
                 this.recognition.start();
             } catch (e) {
-                console.warn("Recognition start info:", e);
+                console.warn("Recognition start:", e);
             }
         }
     }
