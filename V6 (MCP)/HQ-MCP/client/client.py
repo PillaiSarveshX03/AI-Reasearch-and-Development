@@ -16,12 +16,24 @@ async def main():
 
             await session.initialize()
 
-            tools = await session.list_tools()
+            result = await session.call_tool(
+                "get_aircraft_status",
+                arguments={
+                    "aircraft_id": "FALCON-001"
+                }
+            )
 
-            print("Available MCP tools:")
+            print("Aircraft Status:")
+            print(result)
 
-            for tool in tools.tools:
-                print(f"- {tool.name}")
+
+
+            result = await session.call_tool(
+                "get_aircraft_list"
+            )
+
+            print("\nAircraft List:")
+            print(result)
 
 
 if __name__ == "__main__":
